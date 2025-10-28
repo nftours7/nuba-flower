@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGIctHiIiHR8jJzEtIiAlMDU0MkM5SkM1Poys+Pz/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAgACADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xAAqEAACAQQCAgECBwEAAAAAAAAAAQIDEQQFBiExEkETIlFhcYEyIzNCof/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFhEBAQEAAAAAAAAAAAAAAAAAAAER/9oADAMBAAIRAxEAPwD5wAAAAAAAAAABu4aJp1a9aLVmEXWk3st9kl6sDRIAymhs1KklayM42Rk00+zTPQ/iFHE3XwN/DoVZTg93e4vKSSafc83r1ZUKs6sNpxk5L2a2AAAAAAAAAAB6j8O+H4/J4G9fzqE5wUto3JtcYpNpNeqPEw/wAN+IeI4XHyxOWuwrCct8ZNt7JLs0z1jJZnK4nK1MphMhUhhpS/o3t7fDRxHh3ififG5avZzF+2FDbjSba/hPZr/Z00xImWAADaAAAAAAAAAAAA8O+JvG8thsm8NhbzoQhFOcoNNttb2Tw3ifF5bK2bN/J3Z3TlLa3J72/oe0/FDh+YzvEqlbEOMqlOKnKFm9pLptPyeD4ngMpw/IvG5iHLLaaaw017RoAgAArQAAAAAAAAAAA//Z">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nuba Flower Tours Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              cairo: ['Cairo', 'sans-serif'],
+            },
+            colors: {
+              primary: {
+                DEFAULT: '#15803d', // green-700
+                light: '#22c55e',   // green-500
+                dark: '#166534',    // green-800
+              },
+              secondary: '#facc15', // yellow-400
+              accent: '#dc2626',   // red-600
+              gray: {
+                50: '#f8fafc',
+                100: '#f1f5f9',
+                200: '#e2e8f0',
+                300: '#cbd5e1',
+                400: '#94a3b8',
+                500: '#64748b',
+                600: '#475569',
+                700: '#334155',
+                800: '#1e293b',
+                900: '#0f172a',
+              },
+            },
+            transformOrigin: {
+              'bottom': 'bottom',
+            },
+            animation: {
+              'toast-in': 'toast-in 0.5s ease-out forwards',
+              'fade-in': 'fade-in 0.3s ease-out forwards',
+              'bar-grow': 'bar-grow 1s ease-in-out forwards',
+              'donut-spin': 'donut-spin 1s cubic-bezier(0.6, 0, 0.4, 1) forwards',
+              'modal-content-in': 'modal-content-in 0.3s ease-out forwards',
+              'backdrop-in': 'backdrop-in 0.3s ease-out forwards',
+            },
+            keyframes: {
+              'toast-in': {
+                'from': { transform: 'translateX(100%)', opacity: '0' },
+                'to': { transform: 'translateX(0)', opacity: '1' },
+              },
+              'fade-in': {
+                'from': { opacity: '0', transform: 'translateY(5px)' },
+                'to': { opacity: '1', transform: 'translateY(0)' },
+              },
+              'bar-grow': {
+                'from': { transform: 'scaleY(0)' },
+                'to': { transform: 'scaleY(1)' },
+              },
+              'donut-spin': {
+                'from': { transform: 'rotate(0deg)' },
+                'to': { transform: 'rotate(360deg)' },
+              },
+              'modal-content-in': {
+                'from': { opacity: '0', transform: 'scale(0.95) translateY(10px)' },
+                'to': { opacity: '1', transform: 'scale(1) translateY(0)' },
+              },
+              'backdrop-in': {
+                'from': { opacity: '0' },
+                'to': { opacity: '1' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f1f5f9; /* gray-100 */
+      }
+      .font-cairo {
+        font-family: 'Cairo', sans-serif;
+      }
+      /* For Firefox */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #94a3b8 #f1f5f9;
+      }
+
+      /* For Chrome, Safari, and Opera */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 5px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: #94a3b8;
+        border-radius: 14px;
+        border: 3px solid #f1f5f9;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.546.0",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
+    "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^5.0.2",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "vite": "https://aistudiocdn.com/vite@^7.1.12",
+    "path": "https://aistudiocdn.com/path@^0.12.7"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
