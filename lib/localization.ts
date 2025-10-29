@@ -352,6 +352,7 @@ export const translations = {
     apiKeyNotConfiguredError: "Scanning service is not configured. Please contact support.",
     flightDetailsMissingForInvoice: "Cannot generate invoice: flight details are missing for this ticket sale.",
     invoicePackageMissingError: "Cannot generate invoice: The package for this booking could not be found (it may have been deleted).",
+    invoiceCustomerMissingError: "Cannot generate invoice: The customer for this booking could not be found (they may have been deleted).",
   },
   ar: {
     // General
@@ -702,5 +703,6 @@ export const translations = {
     apiKeyNotConfiguredError: "خدمة المسح غير مهيأة. يرجى الاتصال بالدعم.",
     flightDetailsMissingForInvoice: "لا يمكن إنشاء الفاتورة: تفاصيل الرحلة مفقودة لعملية بيع التذكرة هذه.",
     invoicePackageMissingError: "لا يمكن إنشاء الفاتورة: لم يتم العثور على الباقة الخاصة بهذا الحجز (ربما تم حذفها).",
+    invoiceCustomerMissingError: "لا يمكن إنشاء الفاتورة: لم يتم العثور على العميل الخاص بهذا الحجز (ربما تم حذفه).",
   }
 };

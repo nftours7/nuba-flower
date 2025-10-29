@@ -156,7 +156,16 @@ const Bookings: React.FC = () => {
         }
 
         const customer = customers.find(c => c.id === invoiceBooking.customerId);
-        if (!customer) return;
+        if (!customer) {
+            addToast({
+                title: t('error'),
+                message: t('invoiceCustomerMissingError'),
+                type: 'error',
+            });
+            setIsInvoiceModalOpen(false);
+            setInvoiceBooking(null);
+            return;
+        }
 
         try {
             const doc = new jsPDF();
@@ -236,7 +245,7 @@ const Bookings: React.FC = () => {
             }
 
             if (isTicketOnlySale && invoiceBooking.flightDetails) {
-                 const head = [[t('itemDescription'), 'Details']];
+                 const head = [[t('itemDescription'), t('details')]];
                  const body = [
                      [t('airline'), `${invoiceBooking.flightDetails.airline} - ${invoiceBooking.flightDetails.flightNumber}`],
                      [t('departureDate'), new Date(invoiceBooking.flightDetails.departureDate).toLocaleDateString()],
@@ -258,7 +267,7 @@ const Bookings: React.FC = () => {
                     return;
                 }
 
-                const head = [[t('itemDescription'), 'Details']];
+                const head = [[t('itemDescription'), t('details')]];
                 let body = [
                     [t('package'), `${pkg.name} (${pkg.duration} ${t('duration')})`],
                     [t('hotelMakkah'), pkg.hotelMakkah],
