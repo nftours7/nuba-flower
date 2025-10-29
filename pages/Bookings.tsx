@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { logoBase64 } from '../data/logo';
+import { amiriFont } from '../lib/amiri-font';
 
 const statusColors: Record<BookingStatus, string> = {
     Pending: 'bg-yellow-100 text-yellow-800',
@@ -161,6 +162,15 @@ const Bookings: React.FC = () => {
             const doc = new jsPDF();
             const isArabic = language === 'ar';
 
+            if (isArabic) {
+                const amiriFontB64 = amiriFont.split(',')[1];
+                doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
+                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+                doc.setFont('Amiri');
+            } else {
+                doc.setFont('Helvetica');
+            }
+
             const img = new Image();
             img.src = logoBase64;
             await new Promise(resolve => {
@@ -170,8 +180,6 @@ const Bookings: React.FC = () => {
 
             const logoWidth = 45;
             const logoHeight = (logoWidth / img.width) * img.height;
-            
-            doc.setFont('Helvetica'); 
             
             const companyName = "Nuba Flower Tours";
             const companyAddress = "6 Sultan St. behind Egypt Air office, Aswan";
@@ -216,6 +224,17 @@ const Bookings: React.FC = () => {
             
             let lastY = 140;
 
+            const autoTableStyles: any = {
+                theme: 'striped',
+                headStyles: { fillColor: [22, 101, 52] }
+            };
+
+            if (isArabic) {
+                autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
+                autoTableStyles.headStyles.font = 'Amiri';
+                autoTableStyles.headStyles.halign = 'right';
+            }
+
             if (isTicketOnlySale && invoiceBooking.flightDetails) {
                  const head = [[t('itemDescription'), 'Details']];
                  const body = [
@@ -223,7 +242,7 @@ const Bookings: React.FC = () => {
                      [t('departureDate'), new Date(invoiceBooking.flightDetails.departureDate).toLocaleDateString()],
                      [t('returnDate'), new Date(invoiceBooking.flightDetails.returnDate).toLocaleDateString()],
                  ];
-                 autoTable(doc, { head, body, startY: lastY, theme: 'striped', headStyles: { fillColor: [22, 101, 52] } });
+                 autoTable(doc, { ...autoTableStyles, head, body, startY: lastY });
                  lastY = (doc as any).lastAutoTable.finalY;
 
             } else { // Package booking
@@ -256,7 +275,7 @@ const Bookings: React.FC = () => {
                     body.push([t('departureDate'), new Date(invoiceBooking.flightDetails.departureDate).toLocaleDateString()]);
                     body.push([t('returnDate'), new Date(invoiceBooking.flightDetails.returnDate).toLocaleDateString()]);
                 }
-                autoTable(doc, { head, body, startY: lastY, theme: 'striped', headStyles: { fillColor: [22, 101, 52] } });
+                autoTable(doc, { ...autoTableStyles, head, body, startY: lastY });
                 lastY = (doc as any).lastAutoTable.finalY;
             }
 
@@ -272,12 +291,21 @@ const Bookings: React.FC = () => {
                     t(p.method.replace(' ', '') as any),
                     `EGP ${p.amount.toLocaleString()}`
                 ]);
+                
+                const paymentAutoTableStyles: any = {
+                    theme: 'grid',
+                    headStyles: { fillColor: [71, 85, 105] }
+                };
+                if (isArabic) {
+                    paymentAutoTableStyles.styles = { font: 'Amiri', halign: 'right' };
+                    paymentAutoTableStyles.headStyles.font = 'Amiri';
+                    paymentAutoTableStyles.headStyles.halign = 'right';
+                }
                 autoTable(doc, { 
+                    ...paymentAutoTableStyles,
                     head: paymentHead, 
                     body: paymentBody, 
                     startY: lastY + 18, 
-                    theme: 'grid',
-                    headStyles: { fillColor: [71, 85, 105] }
                 });
                 lastY = (doc as any).lastAutoTable.finalY;
             }
@@ -292,7 +320,7 @@ const Bookings: React.FC = () => {
                  const summaryX = isArabic ? 195 : 140;
 
                  doc.setFontSize(14);
-                 doc.setFont('Helvetica', 'bold');
+                 if (!isArabic) doc.setFont('Helvetica', 'bold');
                  doc.setTextColor(22, 163, 74);
                  doc.text(`${t('totalPaid')}:`, summaryX, finalYPos + 7, { align: 'right' });
                  doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
@@ -307,20 +335,21 @@ const Bookings: React.FC = () => {
 
                 const summaryX = isArabic ? 195 : 140;
                 doc.setFontSize(12);
+                if (!isArabic) doc.setFont('Helvetica', 'normal');
                 doc.setTextColor(0, 0, 0);
                 doc.text(`${t('subtotal')}:`, summaryX, finalYPos, { align: 'right' });
                 doc.text(`EGP ${price.toLocaleString()}`, 200, finalYPos, { align: 'right' });
                 doc.text(`${t('amountPaid')}:`, summaryX, finalYPos + 7, { align: 'right' });
                 doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
                 doc.setFontSize(14);
-                doc.setFont('Helvetica', 'bold');
+                if (!isArabic) doc.setFont('Helvetica', 'bold');
                 if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
                 doc.text(`${t('amountDue')}:`, summaryX, finalYPos + 16, { align: 'right' });
                 doc.text(`EGP ${due.toLocaleString()}`, 200, finalYPos + 16, { align: 'right' });
             }
 
             doc.setFontSize(8);
-            doc.setFont('Helvetica', 'normal');
+            if (!isArabic) doc.setFont('Helvetica', 'normal');
             doc.setTextColor(150);
             doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, finalY, { align: 'center' });
 
@@ -539,6 +568,7 @@ const Bookings: React.FC = () => {
                 title={t('invoice')}
                 message={t('confirmInvoiceGeneration')}
                 confirmText={t('generatePDF')}
+                icon={Printer}
             />
         </div>
     );

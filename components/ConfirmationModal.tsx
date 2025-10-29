@@ -10,9 +10,11 @@ interface ConfirmationModalProps {
   title: string;
   message: string;
   confirmText?: string;
+  icon?: React.ElementType;
+  iconColor?: string;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, title, message, confirmText }) => {
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, title, message, confirmText, icon: Icon, iconColor }) => {
   const { t } = useApp();
 
   const isConstructiveAction = !!confirmText;
@@ -20,11 +22,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
   const buttonClass = isConstructiveAction
     ? "bg-primary text-white hover:bg-primary-dark focus:ring-primary"
     : "bg-accent text-white hover:bg-red-700 focus:ring-accent";
+    
+  const FinalIcon = Icon || AlertTriangle;
+  const finalIconColor = Icon ? (iconColor || 'text-primary') : 'text-red-500';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="flex flex-col items-center text-center">
-        <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
+        <FinalIcon className={`w-16 h-16 ${finalIconColor} mb-4`} />
         <p className="text-gray-600 mb-6">{message}</p>
         <div className="flex justify-center gap-4 w-full">
           <button

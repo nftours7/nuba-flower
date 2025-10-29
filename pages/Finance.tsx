@@ -11,6 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { logoBase64 } from '../data/logo';
+import { amiriFont } from '../lib/amiri-font';
 
 
 const FinanceCard: React.FC<{ title: string; amount: number; icon: React.ElementType, color: 'green' | 'red' | 'blue' }> = ({ title, amount, icon: Icon, color }) => {
@@ -122,6 +123,13 @@ const Finance: React.FC = () => {
         try {
             const doc = new jsPDF();
             const isArabic = language === 'ar';
+            
+            if (isArabic) {
+                const amiriFontB64 = amiriFont.split(',')[1];
+                doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
+                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+                doc.setFont('Amiri');
+            }
 
             const img = new Image();
             img.src = logoBase64;
@@ -155,6 +163,12 @@ const Finance: React.FC = () => {
             doc.text(customerInfo, isArabic ? 195 : 14, 111, { align: isArabic ? 'right' : 'left' });
             
             let lastY = 130;
+
+            const autoTableStyles: any = {};
+            if (isArabic) {
+                autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
+                autoTableStyles.headStyles = { font: 'Amiri', halign: 'right' };
+            }
             
             const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
             const allPaymentsForBooking = payments.filter(p => p.bookingId === booking.id);
@@ -162,6 +176,7 @@ const Finance: React.FC = () => {
             const remainingBalance = totalPackagePrice - totalPaidToDate;
 
             autoTable(doc, {
+                ...autoTableStyles,
                 head: [[t('bookingSummary')]],
                 body: [
                     [`${t('bookingId')}: ${booking.id}`],
@@ -169,11 +184,12 @@ const Finance: React.FC = () => {
                 ],
                 startY: lastY,
                 theme: 'plain',
-                headStyles: { fillColor: [22, 101, 52], textColor: 255 },
+                headStyles: { ...autoTableStyles.headStyles, fillColor: [22, 101, 52], textColor: 255 },
             });
             lastY = (doc as any).lastAutoTable.finalY;
             
             autoTable(doc, {
+                ...autoTableStyles,
                 head: [[t('paymentDetails')]],
                 body: [
                     [`${t('paymentDate')}: ${new Date(receiptPayment.paymentDate).toLocaleDateString()}`],
@@ -182,7 +198,7 @@ const Finance: React.FC = () => {
                 ],
                 startY: lastY + 5,
                 theme: 'plain',
-                headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+                headStyles: { ...autoTableStyles.headStyles, fillColor: [71, 85, 105], textColor: 255 },
             });
             lastY = (doc as any).lastAutoTable.finalY;
 
@@ -194,7 +210,7 @@ const Finance: React.FC = () => {
             doc.text(`EGP ${totalPackagePrice.toLocaleString()}`, 200, lastY + 10, { align: 'right' });
             doc.text(`${t('totalPaidToDate')}:`, summaryX, lastY + 17, { align: 'right' });
             doc.text(`EGP ${totalPaidToDate.toLocaleString()}`, 200, lastY + 17, { align: 'right' });
-            doc.setFont('Helvetica', 'bold');
+            if (!isArabic) doc.setFont('Helvetica', 'bold');
             doc.text(`${t('remainingBalance')}:`, summaryX, lastY + 24, { align: 'right' });
             doc.text(`EGP ${remainingBalance.toLocaleString()}`, 200, lastY + 24, { align: 'right' });
 
@@ -335,6 +351,7 @@ const Finance: React.FC = () => {
                 title={t('receipt')}
                 message={t('confirmReceiptGeneration')}
                 confirmText={t('download')}
+                icon={Download}
             />
         </div>
     );

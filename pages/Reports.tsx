@@ -5,9 +5,10 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Navigate } from 'react-router-dom';
+import { amiriFont } from '../lib/amiri-font';
 
 const Reports: React.FC = () => {
-    const { t, customers, bookings, packages, payments, expenses, currentUser } = useApp();
+    const { t, language, customers, bookings, packages, payments, expenses, currentUser } = useApp();
     const [reportType, setReportType] = useState('customerList');
     const [layoutType, setLayoutType] = useState('standardList');
     const [loading, setLoading] = useState(false);
@@ -19,6 +20,14 @@ const Reports: React.FC = () => {
     const generatePdf = () => {
         setLoading(true);
         const doc = new jsPDF();
+        const isArabic = language === 'ar';
+        
+        if (isArabic) {
+            const amiriFontB64 = amiriFont.split(',')[1];
+            doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
+            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+            doc.setFont('Amiri');
+        }
         
         doc.text(`${t('companyName')} - ${t(reportType as any)}`, 14, 16);
 
@@ -50,7 +59,14 @@ const Reports: React.FC = () => {
                  break;
         }
 
+        const autoTableStyles: any = {};
+        if (isArabic) {
+            autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
+            autoTableStyles.headStyles = { font: 'Amiri', halign: 'right' };
+        }
+
         autoTable(doc, {
+            ...autoTableStyles,
             head: head,
             body: body,
             startY: 22,

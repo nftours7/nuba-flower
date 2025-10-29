@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../hooks/useApp';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
-import { Globe } from 'lucide-react';
+import { Globe, Eye, EyeOff } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { t, login, language, setLanguage } = useApp();
@@ -10,6 +10,7 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -62,14 +63,24 @@ const Login: React.FC = () => {
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">{t('password')}</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition-all duration-200"
-              required
-            />
+            <div className="relative mt-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition-all duration-200 pr-10 rtl:pr-3 rtl:pl-10"
+                  required
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 rtl:left-0 rtl:pr-0 rtl:pl-3 flex items-center text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+            </div>
           </div>
           
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
