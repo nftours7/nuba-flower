@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import BookingForm from '../components/BookingForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import EmptyState from '../components/EmptyState';
-import type { Booking, BookingStatus } from '../types';
+import type { Booking, BookingStatus, Customer, Package, Payment } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -141,30 +141,244 @@ const Bookings: React.FC = () => {
         setIsInvoiceModalOpen(true);
     };
 
+    const generateEnglishInvoice = async (doc: jsPDF, booking: Booking, customer: Customer, pkg: Package | undefined) => {
+        doc.setFont('Helvetica');
+
+        // Header
+        const img = new Image();
+        img.src = logoBase64;
+        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
+        const logoWidth = 45;
+        const logoHeight = (logoWidth / img.width) * img.height;
+        doc.addImage(logoBase64, 'JPEG', 14, 15, logoWidth, logoHeight);
+        doc.setFontSize(20);
+        doc.setTextColor(34, 197, 94);
+        doc.text("Nuba Flower Tours", 65, 30, { align: 'left' });
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text("6 Sultan St. behind Egypt Air office, Aswan", 65, 38, { align: 'left' });
+        doc.text("Mobile: +201098888525 - Email: nft7@gmail.com", 65, 44, { align: 'left' });
+
+        // Invoice Title
+        const invoiceTitle = booking.isTicketOnly ? t('flightTicketInvoice') : t('invoice');
+        doc.setFontSize(26);
+        doc.setTextColor(40);
+        doc.text(invoiceTitle.toUpperCase(), 14, 70, { align: 'left' });
+        doc.setLineWidth(0.5);
+        doc.line(14, 73, 200, 73);
+
+        // Invoice Details
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${t('bookingId')}: ${booking.id}`, 14, 85, { align: 'left' });
+        doc.text(`${t('bookingDate')}: ${new Date(booking.bookingDate).toLocaleDateString()}`, 14, 91, { align: 'left' });
+        doc.text(`${t('invoiceDate')}: ${new Date().toLocaleDateString()}`, 14, 97, { align: 'left' });
+        
+        // Customer Details
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(t('billTo'), 14, 110, { align: 'left' });
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
+        doc.text(customerInfo, 14, 116, { align: 'left' });
+        
+        // Items Table
+        let lastY = 140;
+        const autoTableStyles = { theme: 'striped', headStyles: { fillColor: [22, 101, 52] } };
+        if (booking.isTicketOnly && booking.flightDetails) {
+            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('details')]], body: [
+                [t('airline'), `${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`],
+                [t('departureDate'), new Date(booking.flightDetails.departureDate).toLocaleDateString()],
+                [t('returnDate'), new Date(booking.flightDetails.returnDate).toLocaleDateString()],
+            ], startY: lastY });
+            lastY = (doc as any).lastAutoTable.finalY;
+        } else if (pkg) {
+            let body = [[t('package'), `${pkg.name} (${pkg.duration} ${t('duration')})`], [t('hotelMakkah'), pkg.hotelMakkah], [t('hotelMadinah'), pkg.hotelMadinah]];
+            if (booking.withoutBed) { body.push([t('roomType'), t('withoutBedShort')]); }
+            else { body.push([t('roomType'), booking.roomType || 'N/A'], [t('meals'), booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A']); }
+            if (booking.flightDetails) { body.push([t('airline'), `${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`], [t('departureDate'), new Date(booking.flightDetails.departureDate).toLocaleDateString()], [t('returnDate'), new Date(booking.flightDetails.returnDate).toLocaleDateString()]); }
+            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('details')]], body, startY: lastY });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+
+        // Payment History
+        const relevantPayments = payments.filter(p => p.bookingId === booking.id);
+        if (relevantPayments.length > 0) {
+            doc.setFontSize(12);
+            doc.setTextColor(40);
+            doc.text(t('paymentHistory'), 14, lastY + 15, { align: 'left' });
+            autoTable(doc, { 
+                theme: 'grid', headStyles: { fillColor: [71, 85, 105] },
+                head: [[t('paymentDate'), t('paymentMethod'), t('amount')]], 
+                body: relevantPayments.map(p => [new Date(p.paymentDate).toLocaleDateString(), t(p.method.replace(' ', '') as any), `EGP ${p.amount.toLocaleString()}`]), 
+                startY: lastY + 18, 
+            });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+        
+        // Financial Summary
+        const finalYPos = lastY + 15;
+        doc.setLineWidth(0.2);
+        doc.line(140, finalYPos - 5, 200, finalYPos - 5);
+        if (booking.isTicketOnly) {
+            const paid = booking.ticketTotalPaid || 0;
+            doc.setFontSize(14);
+            doc.setFont('Helvetica', 'bold');
+            doc.setTextColor(22, 163, 74);
+            doc.text(`${t('totalPaid')}:`, 140, finalYPos + 7, { align: 'right' });
+            doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
+        } else {
+            const price = pkg?.price || 0;
+            const paid = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
+            const due = price - paid;
+            doc.setFontSize(12);
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(`${t('subtotal')}:`, 140, finalYPos, { align: 'right' });
+            doc.text(`EGP ${price.toLocaleString()}`, 200, finalYPos, { align: 'right' });
+            doc.text(`${t('amountPaid')}:`, 140, finalYPos + 7, { align: 'right' });
+            doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
+            doc.setFontSize(14);
+            doc.setFont('Helvetica', 'bold');
+            if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
+            doc.text(`${t('amountDue')}:`, 140, finalYPos + 16, { align: 'right' });
+            doc.text(`EGP ${due.toLocaleString()}`, 200, finalYPos + 16, { align: 'right' });
+        }
+        
+        // Footer
+        doc.setFontSize(8);
+        doc.setFont('Helvetica', 'normal');
+        doc.setTextColor(150);
+        doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, (doc.internal.pageSize.height) - 10, { align: 'center' });
+    };
+
+    const generateArabicInvoice = async (doc: jsPDF, booking: Booking, customer: Customer, pkg: Package | undefined) => {
+        doc.setFont('Amiri');
+        
+        // Header
+        const img = new Image();
+        img.src = logoBase64;
+        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
+        const logoWidth = 45;
+        const logoHeight = (logoWidth / img.width) * img.height;
+        doc.addImage(logoBase64, 'JPEG', 150, 15, logoWidth, logoHeight);
+        doc.setFontSize(20);
+        doc.setTextColor(34, 197, 94);
+        doc.text("زهرة النوبة للسياحة", 140, 30, { align: 'right' });
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text("6 شارع السلطان ابوالعلا خلف مكتب مصر الطيران, أسوان", 140, 38, { align: 'right' });
+        doc.text("Mobile: +201098888525 - Email: nft7@gmail.com", 140, 44, { align: 'right' });
+
+        // Invoice Title
+        const invoiceTitle = booking.isTicketOnly ? t('flightTicketInvoice') : t('invoice');
+        doc.setFontSize(26);
+        doc.setTextColor(40);
+        doc.text(invoiceTitle.toUpperCase(), 195, 70, { align: 'right' });
+        doc.setLineWidth(0.5);
+        doc.line(14, 73, 200, 73);
+
+        // Invoice Details
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${t('bookingId')}: ${booking.id}`, 195, 85, { align: 'right' });
+        doc.text(`${t('bookingDate')}: ${new Date(booking.bookingDate).toLocaleDateString()}`, 195, 91, { align: 'right' });
+        doc.text(`${t('invoiceDate')}: ${new Date().toLocaleDateString()}`, 195, 97, { align: 'right' });
+        
+        // Customer Details
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(t('billTo'), 195, 110, { align: 'right' });
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
+        doc.text(customerInfo, 195, 116, { align: 'right' });
+        
+        // Items Table
+        let lastY = 140;
+        const autoTableStyles = { theme: 'striped', styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right', fillColor: [22, 101, 52] } };
+        if (booking.isTicketOnly && booking.flightDetails) {
+            autoTable(doc, { ...autoTableStyles, head: [[t('details'), t('itemDescription')]], body: [
+                [`${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`, t('airline')],
+                [new Date(booking.flightDetails.departureDate).toLocaleDateString(), t('departureDate')],
+                [new Date(booking.flightDetails.returnDate).toLocaleDateString(), t('returnDate')],
+            ], startY: lastY });
+            lastY = (doc as any).lastAutoTable.finalY;
+        } else if (pkg) {
+            let body = [[`${pkg.name} (${pkg.duration} ${t('duration')})`, t('package')], [pkg.hotelMakkah, t('hotelMakkah')], [pkg.hotelMadinah, t('hotelMadinah')]];
+            if (booking.withoutBed) { body.push([t('withoutBedShort'), t('roomType')]); }
+            else { body.push([booking.roomType || 'N/A', t('roomType')], [booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A', t('meals')]); }
+            if (booking.flightDetails) { body.push([`${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`, t('airline')], [new Date(booking.flightDetails.departureDate).toLocaleDateString(), t('departureDate')], [new Date(booking.flightDetails.returnDate).toLocaleDateString(), t('returnDate')]); }
+            autoTable(doc, { ...autoTableStyles, head: [[t('details'), t('itemDescription')]], body, startY: lastY });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+
+        // Payment History
+        const relevantPayments = payments.filter(p => p.bookingId === booking.id);
+        if (relevantPayments.length > 0) {
+            doc.setFontSize(12);
+            doc.setTextColor(40);
+            doc.text(t('paymentHistory'), 195, lastY + 15, { align: 'right' });
+            autoTable(doc, { 
+                theme: 'grid', styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right', fillColor: [71, 85, 105] },
+                head: [[t('amount'), t('paymentMethod'), t('paymentDate')]], 
+                body: relevantPayments.map(p => [`EGP ${p.amount.toLocaleString()}`, t(p.method.replace(' ', '') as any), new Date(p.paymentDate).toLocaleDateString()]), 
+                startY: lastY + 18, 
+            });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+        
+        // Financial Summary
+        const finalYPos = lastY + 15;
+        doc.setLineWidth(0.2);
+        doc.line(140, finalYPos - 5, 200, finalYPos - 5);
+        if (booking.isTicketOnly) {
+            const paid = booking.ticketTotalPaid || 0;
+            doc.setFontSize(14);
+            doc.setTextColor(22, 163, 74);
+            doc.text(`${t('totalPaid')}:`, 195, finalYPos + 7, { align: 'right' });
+            doc.text(`EGP ${paid.toLocaleString()}`, 170, finalYPos + 7, { align: 'right' });
+        } else {
+            const price = pkg?.price || 0;
+            const paid = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
+            const due = price - paid;
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`${t('subtotal')}:`, 195, finalYPos, { align: 'right' });
+            doc.text(`EGP ${price.toLocaleString()}`, 170, finalYPos, { align: 'right' });
+            doc.text(`${t('amountPaid')}:`, 195, finalYPos + 7, { align: 'right' });
+            doc.text(`EGP ${paid.toLocaleString()}`, 170, finalYPos + 7, { align: 'right' });
+            doc.setFontSize(14);
+            if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
+            doc.text(`${t('amountDue')}:`, 195, finalYPos + 16, { align: 'right' });
+            doc.text(`EGP ${due.toLocaleString()}`, 170, finalYPos + 16, { align: 'right' });
+        }
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, (doc.internal.pageSize.height) - 10, { align: 'center' });
+    };
+
     const confirmGenerateInvoice = async () => {
         if (!invoiceBooking) return;
 
         if (invoiceBooking.isTicketOnly && !invoiceBooking.flightDetails) {
-            addToast({
-                title: t('error'),
-                message: t('flightDetailsMissingForInvoice'),
-                type: 'error',
-            });
-            setIsInvoiceModalOpen(false);
-            setInvoiceBooking(null);
-            return;
+            addToast({ title: t('error'), message: t('flightDetailsMissingForInvoice'), type: 'error' });
+            setIsInvoiceModalOpen(false); setInvoiceBooking(null); return;
         }
 
         const customer = customers.find(c => c.id === invoiceBooking.customerId);
         if (!customer) {
-            addToast({
-                title: t('error'),
-                message: t('invoiceCustomerMissingError'),
-                type: 'error',
-            });
-            setIsInvoiceModalOpen(false);
-            setInvoiceBooking(null);
-            return;
+            addToast({ title: t('error'), message: t('invoiceCustomerMissingError'), type: 'error' });
+            setIsInvoiceModalOpen(false); setInvoiceBooking(null); return;
+        }
+        
+        const pkg = packages.find(p => p.id === invoiceBooking.packageId);
+        if (!invoiceBooking.isTicketOnly && !pkg) {
+            addToast({ title: t('error'), message: t('invoicePackageMissingError'), type: 'error' });
+            setIsInvoiceModalOpen(false); setInvoiceBooking(null); return;
         }
 
         try {
@@ -175,194 +389,12 @@ const Bookings: React.FC = () => {
                 const amiriFontB64 = amiriFont.split(',')[1];
                 doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
                 doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                doc.setFont('Amiri');
+                await generateArabicInvoice(doc, invoiceBooking, customer, pkg);
             } else {
-                doc.setFont('Helvetica');
+                await generateEnglishInvoice(doc, invoiceBooking, customer, pkg);
             }
 
-            const img = new Image();
-            img.src = logoBase64;
-            await new Promise(resolve => {
-                if (img.complete) resolve(true);
-                else img.onload = resolve;
-            });
-
-            const logoWidth = 45;
-            const logoHeight = (logoWidth / img.width) * img.height;
-            
-            const companyName = "Nuba Flower Tours";
-            const companyAddress = "6 Sultan St. behind Egypt Air office, Aswan";
-            const companyContact = "Mobile: +201098888525 - Email: nft7@gmail.com";
-            const companyNameAr = "زهرة النوبة للسياحة";
-            const companyAddressAr = "6 شارع السلطان ابوالعلا خلف مكتب مصر الطيران, أسوان";
-            
-            const finalY = (doc.internal.pageSize.height) - 10;
-            
-            doc.addImage(logoBase64, 'JPEG', isArabic ? 150 : 14, 15, logoWidth, logoHeight);
-            doc.setFontSize(20);
-            doc.setTextColor(34, 197, 94);
-            doc.text(isArabic ? companyNameAr : companyName, isArabic ? 140 : 65, 30, { align: isArabic ? 'right' : 'left' });
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            doc.text(isArabic ? companyAddressAr : companyAddress, isArabic ? 140 : 65, 38, { align: isArabic ? 'right' : 'left' });
-            doc.text(companyContact, isArabic ? 140 : 65, 44, { align: isArabic ? 'right' : 'left' });
-            
-            const isTicketOnlySale = invoiceBooking.isTicketOnly;
-            const invoiceTitle = isTicketOnlySale ? t('flightTicketInvoice') : t('invoice');
-            const invoiceNum = invoiceBooking.id;
-
-            doc.setFontSize(26);
-            doc.setTextColor(40);
-            doc.text(invoiceTitle.toUpperCase(), isArabic ? 195 : 14, 70, { align: isArabic ? 'right' : 'left' });
-            doc.setLineWidth(0.5);
-            doc.line(14, 73, 200, 73);
-
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`${t('bookingId')}: ${invoiceNum}`, isArabic ? 195 : 14, 85, { align: isArabic ? 'right' : 'left' });
-            doc.text(`${t('bookingDate')}: ${new Date(invoiceBooking.bookingDate).toLocaleDateString()}`, isArabic ? 195 : 14, 91, { align: isArabic ? 'right' : 'left' });
-            doc.text(`${t('invoiceDate')}: ${new Date().toLocaleDateString()}`, isArabic ? 195 : 14, 97, { align: isArabic ? 'right' : 'left' });
-            
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(t('billTo'), isArabic ? 195 : 14, 110, { align: isArabic ? 'right' : 'left' });
-            doc.setFontSize(10);
-            doc.setTextColor(0,0,0);
-            const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
-            doc.text(customerInfo, isArabic ? 195 : 14, 116, { align: isArabic ? 'right' : 'left' });
-            
-            let lastY = 140;
-
-            const autoTableStyles: any = {
-                theme: 'striped',
-                headStyles: { fillColor: [22, 101, 52] }
-            };
-
-            if (isArabic) {
-                autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
-                autoTableStyles.headStyles.font = 'Amiri';
-                autoTableStyles.headStyles.halign = 'right';
-            }
-
-            if (isTicketOnlySale && invoiceBooking.flightDetails) {
-                 const head = [[t('itemDescription'), t('details')]];
-                 const body = [
-                     [t('airline'), `${invoiceBooking.flightDetails.airline} - ${invoiceBooking.flightDetails.flightNumber}`],
-                     [t('departureDate'), new Date(invoiceBooking.flightDetails.departureDate).toLocaleDateString()],
-                     [t('returnDate'), new Date(invoiceBooking.flightDetails.returnDate).toLocaleDateString()],
-                 ];
-                 autoTable(doc, { ...autoTableStyles, head, body, startY: lastY });
-                 lastY = (doc as any).lastAutoTable.finalY;
-
-            } else { // Package booking
-                const pkg = packages.find(p => p.id === invoiceBooking.packageId);
-                if (!pkg) {
-                    addToast({
-                        title: t('error'),
-                        message: t('invoicePackageMissingError'),
-                        type: 'error',
-                    });
-                    setIsInvoiceModalOpen(false);
-                    setInvoiceBooking(null);
-                    return;
-                }
-
-                const head = [[t('itemDescription'), t('details')]];
-                let body = [
-                    [t('package'), `${pkg.name} (${pkg.duration} ${t('duration')})`],
-                    [t('hotelMakkah'), pkg.hotelMakkah],
-                    [t('hotelMadinah'), pkg.hotelMadinah],
-                ];
-                if (invoiceBooking.withoutBed) { 
-                    body.push([t('roomType'), t('withoutBedShort')]); 
-                } else {
-                    body.push([t('roomType'), invoiceBooking.roomType || 'N/A']);
-                    body.push([t('meals'), invoiceBooking.meals ? t(invoiceBooking.meals.replace(' ', '') as any) : 'N/A']);
-                }
-                if (invoiceBooking.flightDetails) {
-                    body.push([t('airline'), `${invoiceBooking.flightDetails.airline} - ${invoiceBooking.flightDetails.flightNumber}`]);
-                    body.push([t('departureDate'), new Date(invoiceBooking.flightDetails.departureDate).toLocaleDateString()]);
-                    body.push([t('returnDate'), new Date(invoiceBooking.flightDetails.returnDate).toLocaleDateString()]);
-                }
-                autoTable(doc, { ...autoTableStyles, head, body, startY: lastY });
-                lastY = (doc as any).lastAutoTable.finalY;
-            }
-
-            // Payment History Section
-            const relevantPayments = payments.filter(p => p.bookingId === invoiceBooking.id);
-            if(relevantPayments.length > 0) {
-                doc.setFontSize(12);
-                doc.setTextColor(40);
-                doc.text(t('paymentHistory'), isArabic ? 195 : 14, lastY + 15, { align: isArabic ? 'right' : 'left' });
-                const paymentHead = [[t('paymentDate'), t('paymentMethod'), t('amount')]];
-                const paymentBody = relevantPayments.map(p => [
-                    new Date(p.paymentDate).toLocaleDateString(),
-                    t(p.method.replace(' ', '') as any),
-                    `EGP ${p.amount.toLocaleString()}`
-                ]);
-                
-                const paymentAutoTableStyles: any = {
-                    theme: 'grid',
-                    headStyles: { fillColor: [71, 85, 105] }
-                };
-                if (isArabic) {
-                    paymentAutoTableStyles.styles = { font: 'Amiri', halign: 'right' };
-                    paymentAutoTableStyles.headStyles.font = 'Amiri';
-                    paymentAutoTableStyles.headStyles.halign = 'right';
-                }
-                autoTable(doc, { 
-                    ...paymentAutoTableStyles,
-                    head: paymentHead, 
-                    body: paymentBody, 
-                    startY: lastY + 18, 
-                });
-                lastY = (doc as any).lastAutoTable.finalY;
-            }
-            
-            const finalYPos = lastY + 15;
-            
-            // Financial Summary
-            if (isTicketOnlySale) {
-                 const paid = invoiceBooking.ticketTotalPaid || 0;
-                 doc.setLineWidth(0.2);
-                 doc.line(140, finalYPos - 5, 200, finalYPos - 5);
-                 const summaryX = isArabic ? 195 : 140;
-
-                 doc.setFontSize(14);
-                 if (!isArabic) doc.setFont('Helvetica', 'bold');
-                 doc.setTextColor(22, 163, 74);
-                 doc.text(`${t('totalPaid')}:`, summaryX, finalYPos + 7, { align: 'right' });
-                 doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
-            } else {
-                const pkg = packages.find(p => p.id === invoiceBooking.packageId);
-                const price = pkg?.price || 0;
-                const paid = invoiceBooking.totalPaid;
-                const due = price - paid;
-                
-                doc.setLineWidth(0.2);
-                doc.line(140, finalYPos - 5, 200, finalYPos - 5);
-
-                const summaryX = isArabic ? 195 : 140;
-                doc.setFontSize(12);
-                if (!isArabic) doc.setFont('Helvetica', 'normal');
-                doc.setTextColor(0, 0, 0);
-                doc.text(`${t('subtotal')}:`, summaryX, finalYPos, { align: 'right' });
-                doc.text(`EGP ${price.toLocaleString()}`, 200, finalYPos, { align: 'right' });
-                doc.text(`${t('amountPaid')}:`, summaryX, finalYPos + 7, { align: 'right' });
-                doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
-                doc.setFontSize(14);
-                if (!isArabic) doc.setFont('Helvetica', 'bold');
-                if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
-                doc.text(`${t('amountDue')}:`, summaryX, finalYPos + 16, { align: 'right' });
-                doc.text(`EGP ${due.toLocaleString()}`, 200, finalYPos + 16, { align: 'right' });
-            }
-
-            doc.setFontSize(8);
-            if (!isArabic) doc.setFont('Helvetica', 'normal');
-            doc.setTextColor(150);
-            doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, finalY, { align: 'center' });
-
-            doc.save(`Invoice-${invoiceNum}.pdf`);
+            doc.save(`Invoice-${invoiceBooking.id}.pdf`);
             addToast({ title: t('success'), message: t('invoiceGeneratedSuccess'), type: 'success' });
 
         } catch (error) {
@@ -383,6 +415,9 @@ const Bookings: React.FC = () => {
         const dataToExport = filteredBookings.map(booking => {
             const customer = customers.find(c => c.id === booking.customerId);
             const pkg = packages.find(p => p.id === booking.packageId);
+            const totalPaidForBooking = payments
+                .filter(p => p.bookingId === booking.id)
+                .reduce((sum, p) => sum + p.amount, 0);
             
             const commonData = {
                 [t('bookingId')]: booking.id,
@@ -416,8 +451,8 @@ const Bookings: React.FC = () => {
                 [t('roomType')]: booking.withoutBed ? t('withoutBedShort') : (booking.roomType || 'N/A'),
                 [t('meals')]: booking.withoutBed ? 'N/A' : (booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A'),
                 [t('price')]: pkg?.price || 0,
-                [t('totalPaid')]: booking.totalPaid,
-                [t('amountDue')]: (pkg?.price || 0) - booking.totalPaid,
+                [t('totalPaid')]: totalPaidForBooking,
+                [t('amountDue')]: (pkg?.price || 0) - totalPaidForBooking,
             };
         });
 
@@ -510,6 +545,9 @@ const Bookings: React.FC = () => {
                             {filteredBookings.map(booking => {
                                 const customer = customers.find(c => c.id === booking.customerId);
                                 const pkg = packages.find(p => p.id === booking.packageId);
+                                const totalPaidForBooking = payments
+                                    .filter(p => p.bookingId === booking.id)
+                                    .reduce((sum, p) => sum + p.amount, 0);
                                 return (
                                     <tr key={booking.id} className="bg-white border-b hover:bg-gray-50 transition-colors duration-150">
                                         <td className="px-6 py-4 font-medium text-gray-900">{booking.id}</td>
@@ -523,7 +561,7 @@ const Bookings: React.FC = () => {
                                                 {t(booking.status.replace(' ', '') as any)}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">EGP {booking.isTicketOnly ? (booking.ticketTotalPaid || 0).toLocaleString() : booking.totalPaid.toLocaleString()}</td>
+                                        <td className="px-6 py-4">EGP {booking.isTicketOnly ? (booking.ticketTotalPaid || 0).toLocaleString() : totalPaidForBooking.toLocaleString()}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center items-center gap-4">
                                                 <button onClick={() => handleOpenInvoiceModal(booking)} className="text-gray-500 hover:text-gray-800" title={t('invoice')}>
@@ -578,6 +616,7 @@ const Bookings: React.FC = () => {
                 message={t('confirmInvoiceGeneration')}
                 confirmText={t('generatePDF')}
                 icon={Printer}
+                iconColor="text-primary"
             />
         </div>
     );

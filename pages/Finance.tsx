@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, PieChart, PlusCircle, DollarSign, Download } 
 import Modal from '../components/Modal';
 import ExpenseForm from '../components/ExpenseForm';
 import PaymentForm from '../components/PaymentForm';
-import type { Expense, Payment } from '../types';
+import type { Expense, Payment, Booking, Customer, Package } from '../types';
 import { Navigate } from 'react-router-dom';
 import DonutChart from '../components/DonutChart';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -102,23 +102,135 @@ const Finance: React.FC = () => {
         setIsReceiptModalOpen(true);
     };
 
+    const generateEnglishReceipt = async (doc: jsPDF, payment: Payment, booking: Booking, customer: Customer, pkg: Package | undefined) => {
+        doc.setFont('Helvetica', 'normal');
+
+        const img = new Image();
+        img.src = logoBase64;
+        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
+        const logoWidth = 45;
+        const logoHeight = (logoWidth / img.width) * img.height;
+        doc.addImage(logoBase64, 'JPEG', 14, 15, logoWidth, logoHeight);
+        
+        doc.setFontSize(26);
+        doc.setTextColor(40);
+        doc.text(t('receipt').toUpperCase(), 14, 70, { align: 'left' });
+        doc.setLineWidth(0.5);
+        doc.line(14, 73, 200, 73);
+
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${t('receipt')} ID: ${payment.id}`, 14, 85, { align: 'left' });
+        doc.text(`${t('paymentDate')}: ${new Date(payment.paymentDate).toLocaleDateString()}`, 14, 91, { align: 'left' });
+        
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(t('billTo'), 14, 105, { align: 'left' });
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        doc.text(`${customer.name}\n${customer.email}\n${customer.phone}`, 14, 111, { align: 'left' });
+        
+        let lastY = 130;
+
+        const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
+        const totalPaidToDate = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
+        const remainingBalance = totalPackagePrice - totalPaidToDate;
+
+        autoTable(doc, {
+            head: [[t('bookingSummary')]],
+            body: [[`${t('bookingId')}: ${booking.id}`], [`${t('package')}: ${booking.isTicketOnly ? t('ticketOnlySale') : pkg?.name || 'N/A'}`]],
+            startY: lastY, theme: 'plain', headStyles: { fillColor: [22, 101, 52], textColor: 255 },
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
+        
+        autoTable(doc, {
+            head: [[t('paymentDetails')]],
+            body: [[`${t('paymentDate')}: ${new Date(payment.paymentDate).toLocaleDateString()}`], [`${t('paymentMethod')}: ${t(payment.method.replace(' ', '') as any)}`], [`${t('amount')}: EGP ${payment.amount.toLocaleString()}`]],
+            startY: lastY + 5, theme: 'plain', headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
+
+        doc.setFontSize(12);
+        doc.setTextColor(0,0,0);
+        doc.setFont('Helvetica', 'normal');
+        doc.text(`${t('totalPackagePrice')}:`, 140, lastY + 10, { align: 'right' });
+        doc.text(`EGP ${totalPackagePrice.toLocaleString()}`, 200, lastY + 10, { align: 'right' });
+        doc.text(`${t('totalPaidToDate')}:`, 140, lastY + 17, { align: 'right' });
+        doc.text(`EGP ${totalPaidToDate.toLocaleString()}`, 200, lastY + 17, { align: 'right' });
+        doc.setFont('Helvetica', 'bold');
+        doc.text(`${t('remainingBalance')}:`, 140, lastY + 24, { align: 'right' });
+        doc.text(`EGP ${remainingBalance.toLocaleString()}`, 200, lastY + 24, { align: 'right' });
+    };
+
+    const generateArabicReceipt = async (doc: jsPDF, payment: Payment, booking: Booking, customer: Customer, pkg: Package | undefined) => {
+        doc.setFont('Amiri');
+        
+        const img = new Image();
+        img.src = logoBase64;
+        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
+        const logoWidth = 45;
+        const logoHeight = (logoWidth / img.width) * img.height;
+        doc.addImage(logoBase64, 'JPEG', 150, 15, logoWidth, logoHeight);
+        
+        doc.setFontSize(26);
+        doc.setTextColor(40);
+        doc.text(t('receipt').toUpperCase(), 195, 70, { align: 'right' });
+        doc.setLineWidth(0.5);
+        doc.line(14, 73, 200, 73);
+
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${t('receipt')} ID: ${payment.id}`, 195, 85, { align: 'right' });
+        doc.text(`${t('paymentDate')}: ${new Date(payment.paymentDate).toLocaleDateString()}`, 195, 91, { align: 'right' });
+        
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(t('billTo'), 195, 105, { align: 'right' });
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        doc.text(`${customer.name}\n${customer.email}\n${customer.phone}`, 195, 111, { align: 'right' });
+        
+        let lastY = 130;
+
+        const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
+        const totalPaidToDate = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
+        const remainingBalance = totalPackagePrice - totalPaidToDate;
+        
+        const autoTableStyles = { styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right' } };
+
+        autoTable(doc, {
+            ...autoTableStyles,
+            head: [[t('bookingSummary')]],
+            body: [[`${booking.isTicketOnly ? t('ticketOnlySale') : pkg?.name || 'N/A'} :${t('package')}`], [`${booking.id} :${t('bookingId')}`]],
+            startY: lastY, theme: 'plain', headStyles: { ...autoTableStyles.headStyles, fillColor: [22, 101, 52], textColor: 255 },
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
+        
+        autoTable(doc, {
+            ...autoTableStyles,
+            head: [[t('paymentDetails')]],
+            body: [[`${new Date(payment.paymentDate).toLocaleDateString()} :${t('paymentDate')}`], [`${t(payment.method.replace(' ', '') as any)} :${t('paymentMethod')}`], [`EGP ${payment.amount.toLocaleString()} :${t('amount')}`]],
+            startY: lastY + 5, theme: 'plain', headStyles: { ...autoTableStyles.headStyles, fillColor: [71, 85, 105], textColor: 255 },
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
+
+        doc.setFontSize(12);
+        doc.setTextColor(0,0,0);
+        doc.text(`${t('totalPackagePrice')}:`, 195, lastY + 10, { align: 'right' });
+        doc.text(`EGP ${totalPackagePrice.toLocaleString()}`, 170, lastY + 10, { align: 'right' });
+        doc.text(`${t('totalPaidToDate')}:`, 195, lastY + 17, { align: 'right' });
+        doc.text(`EGP ${totalPaidToDate.toLocaleString()}`, 170, lastY + 17, { align: 'right' });
+        doc.text(`${t('remainingBalance')}:`, 195, lastY + 24, { align: 'right' });
+        doc.text(`EGP ${remainingBalance.toLocaleString()}`, 170, lastY + 24, { align: 'right' });
+    };
+
     const confirmGenerateReceipt = async () => {
         if (!receiptPayment) return;
-
         const booking = bookings.find(b => b.id === receiptPayment.bookingId);
-        if (!booking) {
-            addToast({ title: t('error'), message: t('genericError'), type: 'error' });
-            return;
-        }
-        
+        if (!booking) { addToast({ title: t('error'), message: t('genericError'), type: 'error' }); return; }
         const customer = customers.find(c => c.id === booking.customerId);
-        if (!customer) {
-            addToast({ title: t('error'), message: t('genericError'), type: 'error' });
-            return;
-        }
-
+        if (!customer) { addToast({ title: t('error'), message: t('genericError'), type: 'error' }); return; }
         const pkg = packages.find(p => p.id === booking.packageId);
-        // pkg can be null for ticket-only sales, which is fine.
 
         try {
             const doc = new jsPDF();
@@ -128,91 +240,10 @@ const Finance: React.FC = () => {
                 const amiriFontB64 = amiriFont.split(',')[1];
                 doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
                 doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                doc.setFont('Amiri');
+                await generateArabicReceipt(doc, receiptPayment, booking, customer, pkg);
+            } else {
+                await generateEnglishReceipt(doc, receiptPayment, booking, customer, pkg);
             }
-
-            const img = new Image();
-            img.src = logoBase64;
-            await new Promise(resolve => {
-                if (img.complete) resolve(true);
-                else img.onload = resolve;
-            });
-
-            const logoWidth = 45;
-            const logoHeight = (logoWidth / img.width) * img.height;
-
-            doc.addImage(logoBase64, 'JPEG', isArabic ? 150 : 14, 15, logoWidth, logoHeight);
-            
-            doc.setFontSize(26);
-            doc.setTextColor(40);
-            doc.text(t('receipt').toUpperCase(), isArabic ? 195 : 14, 70, { align: isArabic ? 'right' : 'left' });
-            doc.setLineWidth(0.5);
-            doc.line(14, 73, 200, 73);
-
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`${t('receipt')} ID: ${receiptPayment.id}`, isArabic ? 195 : 14, 85, { align: isArabic ? 'right' : 'left' });
-            doc.text(`${t('paymentDate')}: ${new Date(receiptPayment.paymentDate).toLocaleDateString()}`, isArabic ? 195 : 14, 91, { align: isArabic ? 'right' : 'left' });
-            
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(t('billTo'), isArabic ? 195 : 14, 105, { align: isArabic ? 'right' : 'left' });
-            doc.setFontSize(10);
-            doc.setTextColor(0,0,0);
-            const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}`;
-            doc.text(customerInfo, isArabic ? 195 : 14, 111, { align: isArabic ? 'right' : 'left' });
-            
-            let lastY = 130;
-
-            const autoTableStyles: any = {};
-            if (isArabic) {
-                autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
-                autoTableStyles.headStyles = { font: 'Amiri', halign: 'right' };
-            }
-            
-            const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
-            const allPaymentsForBooking = payments.filter(p => p.bookingId === booking.id);
-            const totalPaidToDate = allPaymentsForBooking.reduce((sum, p) => sum + p.amount, 0);
-            const remainingBalance = totalPackagePrice - totalPaidToDate;
-
-            autoTable(doc, {
-                ...autoTableStyles,
-                head: [[t('bookingSummary')]],
-                body: [
-                    [`${t('bookingId')}: ${booking.id}`],
-                    [`${t('package')}: ${booking.isTicketOnly ? t('ticketOnlySale') : pkg?.name || 'N/A'}`],
-                ],
-                startY: lastY,
-                theme: 'plain',
-                headStyles: { ...autoTableStyles.headStyles, fillColor: [22, 101, 52], textColor: 255 },
-            });
-            lastY = (doc as any).lastAutoTable.finalY;
-            
-            autoTable(doc, {
-                ...autoTableStyles,
-                head: [[t('paymentDetails')]],
-                body: [
-                    [`${t('paymentDate')}: ${new Date(receiptPayment.paymentDate).toLocaleDateString()}`],
-                    [`${t('paymentMethod')}: ${t(receiptPayment.method.replace(' ', '') as any)}`],
-                    [`${t('amount')}: EGP ${receiptPayment.amount.toLocaleString()}`],
-                ],
-                startY: lastY + 5,
-                theme: 'plain',
-                headStyles: { ...autoTableStyles.headStyles, fillColor: [71, 85, 105], textColor: 255 },
-            });
-            lastY = (doc as any).lastAutoTable.finalY;
-
-            // Financial Summary
-            doc.setFontSize(12);
-            doc.setTextColor(0,0,0);
-            const summaryX = isArabic ? 195 : 140;
-            doc.text(`${t('totalPackagePrice')}:`, summaryX, lastY + 10, { align: 'right' });
-            doc.text(`EGP ${totalPackagePrice.toLocaleString()}`, 200, lastY + 10, { align: 'right' });
-            doc.text(`${t('totalPaidToDate')}:`, summaryX, lastY + 17, { align: 'right' });
-            doc.text(`EGP ${totalPaidToDate.toLocaleString()}`, 200, lastY + 17, { align: 'right' });
-            if (!isArabic) doc.setFont('Helvetica', 'bold');
-            doc.text(`${t('remainingBalance')}:`, summaryX, lastY + 24, { align: 'right' });
-            doc.text(`EGP ${remainingBalance.toLocaleString()}`, 200, lastY + 24, { align: 'right' });
 
             doc.save(`Receipt-${receiptPayment.id}.pdf`);
             addToast({ title: t('success'), message: t('receiptGeneratedSuccess'), type: 'success' });
@@ -352,6 +383,7 @@ const Finance: React.FC = () => {
                 message={t('confirmReceiptGeneration')}
                 confirmText={t('download')}
                 icon={Download}
+                iconColor="text-primary"
             />
         </div>
     );

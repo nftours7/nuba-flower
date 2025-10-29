@@ -268,10 +268,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
                             ))}
                         </select>
                     </div>
-                     <div>
-                        <label htmlFor="totalPaid" className="block text-sm font-medium text-gray-500">{t('totalPaid')}</label>
-                        <input type="number" id="totalPaid" value={totalPaid} onChange={e => setTotalPaid(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition-all duration-200" required />
-                    </div>
                     {isChild && (
                         <div className="pt-2">
                             <label className="flex items-center space-x-2 rtl:space-x-reverse cursor-pointer bg-yellow-50 p-3 rounded-md border border-yellow-200">

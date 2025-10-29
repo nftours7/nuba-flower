@@ -16,21 +16,8 @@ const Reports: React.FC = () => {
     if (currentUser?.role !== 'Admin') {
         return <Navigate to="/dashboard" replace />;
     }
-    
-    const generatePdf = () => {
-        setLoading(true);
-        const doc = new jsPDF();
-        const isArabic = language === 'ar';
-        
-        if (isArabic) {
-            const amiriFontB64 = amiriFont.split(',')[1];
-            doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
-            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-            doc.setFont('Amiri');
-        }
-        
-        doc.text(`${t('companyName')} - ${t(reportType as any)}`, 14, 16);
 
+    const getReportData = () => {
         let head: string[][] = [];
         let body: any[][] = [];
 
@@ -58,19 +45,41 @@ const Reports: React.FC = () => {
                  ];
                  break;
         }
+        return { head, body };
+    };
+    
+    const generateEnglishReport = (doc: jsPDF) => {
+        const title = `${t('companyName')} - ${t(reportType as any)}`;
+        doc.text(title, 14, 16);
+        const { head, body } = getReportData();
+        autoTable(doc, { head, body, startY: 22 });
+    };
 
-        const autoTableStyles: any = {};
-        if (isArabic) {
-            autoTableStyles.styles = { font: 'Amiri', halign: 'right' };
-            autoTableStyles.headStyles = { font: 'Amiri', halign: 'right' };
-        }
-
+    const generateArabicReport = (doc: jsPDF) => {
+        const title = `${t('companyName')} - ${t(reportType as any)}`;
+        doc.text(title, doc.internal.pageSize.width - 14, 16, { align: 'right' });
+        const { head, body } = getReportData();
         autoTable(doc, {
-            ...autoTableStyles,
-            head: head,
-            body: body,
-            startY: 22,
+            head, body, startY: 22,
+            styles: { font: 'Amiri', halign: 'right' },
+            headStyles: { font: 'Amiri', halign: 'right' },
         });
+    };
+
+    const generatePdf = () => {
+        setLoading(true);
+        const doc = new jsPDF();
+        const isArabic = language === 'ar';
+        
+        if (isArabic) {
+            const amiriFontB64 = amiriFont.split(',')[1];
+            doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
+            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+            doc.setFont('Amiri');
+            generateArabicReport(doc);
+        } else {
+            generateEnglishReport(doc);
+        }
         
         doc.save(`${reportType}.pdf`);
         setLoading(false);
