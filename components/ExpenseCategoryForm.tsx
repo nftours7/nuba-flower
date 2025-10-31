@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../hooks/useApp';
-// FIX: Changed import to use the newly defined ExpenseCategory interface.
 import type { ExpenseCategory } from '../types';
 
 interface ExpenseCategoryFormProps {
@@ -35,7 +34,6 @@ const ExpenseCategoryForm: React.FC<ExpenseCategoryFormProps> = ({ onSave, onCan
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                {/* FIX: The key 'categoryName' is now defined in translations. */}
                 <label htmlFor="categoryName" className="block text-sm font-medium text-gray-500">{t('categoryName')}</label>
                 <input
                     type="text"

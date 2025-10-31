@@ -22,13 +22,13 @@ export const mockPackages: Package[] = [
 ];
 
 export const mockBookings: Booking[] = [
-  { id: 'B001', customerId: 'C001', packageId: 'P01', bookingDate: '2023-11-05', status: 'Completed', totalPaid: 35000, roomType: 'Triple', meals: 'Full Board' },
-  { id: 'B002', customerId: 'C002', packageId: 'P02', bookingDate: '2023-11-10', status: 'Ticketed', totalPaid: 60000, roomType: 'Double', meals: 'Breakfast', flightDetails: { airline: 'EgyptAir', flightNumber: 'MS644', departureDate: '2023-12-10', returnDate: '2023-12-20' } },
-  { id: 'B003', customerId: 'C003', packageId: 'P01', bookingDate: '2023-11-12', status: 'Visa Processed', totalPaid: 35000, roomType: 'Quad', meals: 'Half Board' },
-  { id: 'B004', customerId: 'C001', packageId: 'P03', bookingDate: '2024-01-20', status: 'Deposited', totalPaid: 100000, roomType: 'Double', meals: 'Only Bed', flightDetails: { airline: 'Saudia', flightNumber: 'SV302', departureDate: '2024-06-10', returnDate: '2024-07-05' } },
-  { id: 'B005', customerId: 'C002', packageId: 'P01', bookingDate: '2024-02-01', status: 'Pending', totalPaid: 5000, roomType: 'Quintuple', meals: 'Breakfast' },
-  { id: 'B006', customerId: 'C004', packageId: 'P02', bookingDate: '2024-03-05', status: 'Confirmed', totalPaid: 15000, withoutBed: true },
-  { id: 'B007', customerId: 'C003', packageId: '', bookingDate: '2024-04-10', status: 'Ticketed', totalPaid: 0, isTicketOnly: true, ticketCostPrice: 7500, ticketTotalPaid: 8200, flightDetails: { airline: 'Flynas', flightNumber: 'XY264', departureDate: '2024-05-20', returnDate: '2024-05-30' } },
+  { id: 'B001', customerId: 'C001', packageId: 'P01', bookingDate: '2023-11-05', status: 'Completed', roomType: 'Triple', meals: 'Full Board' },
+  { id: 'B002', customerId: 'C002', packageId: 'P02', bookingDate: '2023-11-10', status: 'Ticketed', roomType: 'Double', meals: 'Breakfast', flightDetails: { airline: 'EgyptAir', flightNumber: 'MS644', departureDate: '2023-12-10', returnDate: '2023-12-20' } },
+  { id: 'B003', customerId: 'C003', packageId: 'P01', bookingDate: '2023-11-12', status: 'Visa Processed', roomType: 'Quad', meals: 'Half Board' },
+  { id: 'B004', customerId: 'C001', packageId: 'P03', bookingDate: '2024-01-20', status: 'Deposited', roomType: 'Double', meals: 'Only Bed', flightDetails: { airline: 'Saudia', flightNumber: 'SV302', departureDate: '2024-06-10', returnDate: '2024-07-05' } },
+  { id: 'B005', customerId: 'C002', packageId: 'P01', bookingDate: '2024-02-01', status: 'Pending', roomType: 'Quintuple', meals: 'Breakfast' },
+  { id: 'B006', customerId: 'C004', packageId: 'P02', bookingDate: '2024-03-05', status: 'Confirmed', withoutBed: true },
+  { id: 'B007', customerId: 'C003', packageId: '', bookingDate: '2024-04-10', status: 'Ticketed', isTicketOnly: true, ticketCostPrice: 7500, ticketTotalPaid: 8200, flightDetails: { airline: 'Flynas', flightNumber: 'XY264', departureDate: '2024-05-20', returnDate: '2024-05-30' } },
 ];
 
 export const mockPayments: Payment[] = [

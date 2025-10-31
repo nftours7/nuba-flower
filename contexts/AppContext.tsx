@@ -1,13 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-// FIX: Import ExpenseCategory type.
-import type { Language, Customer, Package, Booking, Payment, Expense, Toast, Task, User, ActivityLogEntry, ActivityAction, ActivityEntity, ExpenseCategory } from '../types';
+import type { Customer, Package, Booking, Payment, Expense, Toast, Task, User, ActivityLogEntry, ActivityAction, ActivityEntity, ExpenseCategory } from '../types';
 import { translations } from '../lib/localization';
-// FIX: Import mockExpenseCategories.
 import { mockBookings, mockCustomers, mockExpenses, mockPackages, mockPayments, mockTasks, mockUsers as initialUsers, mockExpenseCategories } from '../data/mock';
 
 interface AppContextType {
-  language: Language;
-  setLanguage: (language: Language) => void;
   t: (key: keyof typeof translations.en, params?: Record<string, string>) => string;
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
@@ -21,7 +17,6 @@ interface AppContextType {
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
-  // FIX: Add expenseCategories state to the context type.
   expenseCategories: ExpenseCategory[];
   setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
   users: User[];
@@ -48,14 +43,12 @@ const initialData = {
     payments: mockPayments,
     expenses: mockExpenses,
     tasks: mockTasks,
-    // FIX: Add expenseCategories to the initial data.
     expenseCategories: mockExpenseCategories,
     users: initialUsers,
     activityLog: [],
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Load initial state from localStorage or use mock data
@@ -82,7 +75,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setPayments = (updater: React.SetStateAction<Payment[]>) => setAppData(d => ({ ...d, payments: typeof updater === 'function' ? updater(d.payments) : updater }));
   const setExpenses = (updater: React.SetStateAction<Expense[]>) => setAppData(d => ({ ...d, expenses: typeof updater === 'function' ? updater(d.expenses) : updater }));
   const setTasks = (updater: React.SetStateAction<Task[]>) => setAppData(d => ({ ...d, tasks: typeof updater === 'function' ? updater(d.tasks) : updater }));
-  // FIX: Add a setter for expenseCategories.
   const setExpenseCategories = (updater: React.SetStateAction<ExpenseCategory[]>) => setAppData(d => ({ ...d, expenseCategories: typeof updater === 'function' ? updater(d.expenseCategories) : updater }));
   const setUsers = (updater: React.SetStateAction<User[]>) => setAppData(d => ({ ...d, users: typeof updater === 'function' ? updater(d.users) : updater }));
   const setActivityLog = (updater: React.SetStateAction<ActivityLogEntry[]>) => setAppData(d => ({ ...d, activityLog: typeof updater === 'function' ? updater(d.activityLog) : updater }));
@@ -106,14 +98,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const t = useCallback((key: keyof typeof translations.en, params?: Record<string, string>) => {
-    let translation = translations[language][key] || key;
+    let translation = translations.en[key] || key;
     if (params) {
       Object.keys(params).forEach(pKey => {
         translation = translation.replace(`{${pKey}}`, params[pKey]);
       });
     }
     return translation;
-  }, [language]);
+  }, []);
 
   const addToast = (toast: Omit<Toast, 'id'>) => {
     const id = Date.now().toString();
@@ -156,8 +148,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 
   const value: AppContextType = {
-    language,
-    setLanguage,
     t,
     customers,
     setCustomers: setCustomers as React.Dispatch<React.SetStateAction<Customer[]>>,

@@ -11,7 +11,6 @@ interface ModalProps {
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
-  const { language } = useApp();
 
   React.useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
@@ -33,7 +32,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       role="dialog"
     >
       <div 
-        className={`bg-white rounded-lg shadow-xl w-full max-w-lg m-4 animate-modal-content-in ${language === 'ar' ? 'rtl' : 'ltr'}`}
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg m-4 animate-modal-content-in"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">

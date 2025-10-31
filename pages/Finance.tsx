@@ -11,7 +11,6 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { logoBase64 } from '../data/logo';
-import { amiriFont } from '../lib/amiri-font';
 
 
 const FinanceCard: React.FC<{ title: string; amount: number; icon: React.ElementType, color: 'green' | 'red' | 'blue' }> = ({ title, amount, icon: Icon, color }) => {
@@ -38,7 +37,7 @@ const FinanceCard: React.FC<{ title: string; amount: number; icon: React.Element
 
 
 const Finance: React.FC = () => {
-    const { t, language, payments, setPayments, expenses, setExpenses, addToast, currentUser, logActivity, bookings, customers, packages } = useApp();
+    const { t, payments, setPayments, expenses, setExpenses, addToast, currentUser, logActivity, bookings, setBookings, customers, packages } = useApp();
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -95,6 +94,28 @@ const Finance: React.FC = () => {
             type: 'success'
         });
         logActivity('Created', 'Payment', newPayment.id, `of ${newPayment.amount.toLocaleString()} to Booking ${newPayment.bookingId}`);
+
+        // Check for automatic status update
+        const bookingToUpdate = bookings.find(b => b.id === newPayment.bookingId);
+        if (bookingToUpdate && !bookingToUpdate.isTicketOnly) {
+            const pkg = packages.find(p => p.id === bookingToUpdate.packageId);
+            if (pkg) {
+                const allPaymentsForBooking = [...payments, newPayment].filter(p => p.bookingId === newPayment.bookingId);
+                const newTotalPaid = allPaymentsForBooking.reduce((sum, p) => sum + p.amount, 0);
+
+                if (newTotalPaid >= pkg.price && ['Pending', 'Deposited'].includes(bookingToUpdate.status)) {
+                    setBookings(prev => prev.map(b => 
+                        b.id === newPayment.bookingId ? { ...b, status: 'Confirmed' } : b
+                    ));
+                    addToast({
+                        title: t('info'),
+                        message: t('bookingStatusUpdated', { bookingId: newPayment.bookingId }),
+                        type: 'info'
+                    });
+                    logActivity('Updated', 'Booking', newPayment.bookingId, `Status changed to Confirmed due to full payment.`);
+                }
+            }
+        }
     };
     
     const handleOpenReceiptModal = (payment: Payment) => {
@@ -133,7 +154,8 @@ const Finance: React.FC = () => {
         let lastY = 130;
 
         const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
-        const totalPaidToDate = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
+        const allPaymentsForBooking = payments.filter(p => p.bookingId === booking.id);
+        const totalPaidToDate = allPaymentsForBooking.reduce((sum, p) => sum + p.amount, 0);
         const remainingBalance = totalPackagePrice - totalPaidToDate;
 
         autoTable(doc, {
@@ -162,68 +184,6 @@ const Finance: React.FC = () => {
         doc.text(`EGP ${remainingBalance.toLocaleString()}`, 200, lastY + 24, { align: 'right' });
     };
 
-    const generateArabicReceipt = async (doc: jsPDF, payment: Payment, booking: Booking, customer: Customer, pkg: Package | undefined) => {
-        doc.setFont('Amiri');
-        
-        const img = new Image();
-        img.src = logoBase64;
-        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
-        const logoWidth = 45;
-        const logoHeight = (logoWidth / img.width) * img.height;
-        doc.addImage(logoBase64, 'JPEG', 150, 15, logoWidth, logoHeight);
-        
-        doc.setFontSize(26);
-        doc.setTextColor(40);
-        doc.text(t('receipt').toUpperCase(), 195, 70, { align: 'right' });
-        doc.setLineWidth(0.5);
-        doc.line(14, 73, 200, 73);
-
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`${t('receipt')} ID: ${payment.id}`, 195, 85, { align: 'right' });
-        doc.text(`${t('paymentDate')}: ${new Date(payment.paymentDate).toLocaleDateString()}`, 195, 91, { align: 'right' });
-        
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(t('billTo'), 195, 105, { align: 'right' });
-        doc.setFontSize(10);
-        doc.setTextColor(0,0,0);
-        doc.text(`${customer.name}\n${customer.email}\n${customer.phone}`, 195, 111, { align: 'right' });
-        
-        let lastY = 130;
-
-        const totalPackagePrice = booking.isTicketOnly ? (booking.ticketTotalPaid || 0) : (pkg?.price || 0);
-        const totalPaidToDate = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
-        const remainingBalance = totalPackagePrice - totalPaidToDate;
-        
-        const autoTableStyles = { styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right' } };
-
-        autoTable(doc, {
-            ...autoTableStyles,
-            head: [[t('bookingSummary')]],
-            body: [[`${booking.isTicketOnly ? t('ticketOnlySale') : pkg?.name || 'N/A'} :${t('package')}`], [`${booking.id} :${t('bookingId')}`]],
-            startY: lastY, theme: 'plain', headStyles: { ...autoTableStyles.headStyles, fillColor: [22, 101, 52], textColor: 255 },
-        });
-        lastY = (doc as any).lastAutoTable.finalY;
-        
-        autoTable(doc, {
-            ...autoTableStyles,
-            head: [[t('paymentDetails')]],
-            body: [[`${new Date(payment.paymentDate).toLocaleDateString()} :${t('paymentDate')}`], [`${t(payment.method.replace(' ', '') as any)} :${t('paymentMethod')}`], [`EGP ${payment.amount.toLocaleString()} :${t('amount')}`]],
-            startY: lastY + 5, theme: 'plain', headStyles: { ...autoTableStyles.headStyles, fillColor: [71, 85, 105], textColor: 255 },
-        });
-        lastY = (doc as any).lastAutoTable.finalY;
-
-        doc.setFontSize(12);
-        doc.setTextColor(0,0,0);
-        doc.text(`${t('totalPackagePrice')}:`, 195, lastY + 10, { align: 'right' });
-        doc.text(`EGP ${totalPackagePrice.toLocaleString()}`, 170, lastY + 10, { align: 'right' });
-        doc.text(`${t('totalPaidToDate')}:`, 195, lastY + 17, { align: 'right' });
-        doc.text(`EGP ${totalPaidToDate.toLocaleString()}`, 170, lastY + 17, { align: 'right' });
-        doc.text(`${t('remainingBalance')}:`, 195, lastY + 24, { align: 'right' });
-        doc.text(`EGP ${remainingBalance.toLocaleString()}`, 170, lastY + 24, { align: 'right' });
-    };
-
     const confirmGenerateReceipt = async () => {
         if (!receiptPayment) return;
         const booking = bookings.find(b => b.id === receiptPayment.bookingId);
@@ -234,17 +194,8 @@ const Finance: React.FC = () => {
 
         try {
             const doc = new jsPDF();
-            const isArabic = language === 'ar';
+            await generateEnglishReceipt(doc, receiptPayment, booking, customer, pkg);
             
-            if (isArabic) {
-                const amiriFontB64 = amiriFont.split(',')[1];
-                doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
-                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                await generateArabicReceipt(doc, receiptPayment, booking, customer, pkg);
-            } else {
-                await generateEnglishReceipt(doc, receiptPayment, booking, customer, pkg);
-            }
-
             doc.save(`Receipt-${receiptPayment.id}.pdf`);
             addToast({ title: t('success'), message: t('receiptGeneratedSuccess'), type: 'success' });
         } catch (error) {
@@ -293,7 +244,7 @@ const Finance: React.FC = () => {
                     </div>
                      <ul className="space-y-2">
                         {payments.length > 0 ? (
-                            payments.slice(0, 5).map(p => {
+                            [...payments].sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).slice(0, 5).map(p => {
                                 const booking = bookings.find(b => b.id === p.bookingId);
                                 const customer = booking ? customers.find(c => c.id === booking.customerId) : null;
                                 const pkg = booking ? packages.find(pkg => pkg.id === booking.packageId) : null;
@@ -304,7 +255,7 @@ const Finance: React.FC = () => {
                                             <p className="font-semibold text-gray-800">{customer?.name || t('noData')}</p>
                                             <p className="text-sm text-gray-600">{pkg?.name || (booking?.isTicketOnly ? t('ticketOnlySale') : t('noData'))}</p>
                                             <p className="text-xs text-gray-400 mt-1">
-                                                {t('bookingId')}: {p.bookingId} | {new Date(p.paymentDate).toLocaleDateString()} | {p.method}
+                                                {t('bookingId')}: {p.bookingId} | {new Date(p.paymentDate).toLocaleDateString()} | {t(p.method.replace(' ', '') as any)}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -338,7 +289,7 @@ const Finance: React.FC = () => {
                 </div>
                 {/* Expense list here */}
                 <ul className="space-y-3">
-                    {expenses.slice(0,5).map(e => (
+                    {[...expenses].sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).slice(0,5).map(e => (
                         <li key={e.id} className="flex justify-between items-center p-2 rounded hover:bg-gray-50">
                             <div>
                                 <p className="font-medium text-gray-800">{e.description}</p>

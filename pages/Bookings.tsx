@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../hooks/useApp';
-import { PlusCircle, Edit, Trash2, Printer, Search, X, FileSpreadsheet, Book } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Printer, Search, X, FileSpreadsheet, Book, Eye, FileDown } from 'lucide-react';
 import Modal from '../components/Modal';
 import BookingForm from '../components/BookingForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import EmptyState from '../components/EmptyState';
+import BookingDetailsModal from '../components/BookingDetailsModal';
 import type { Booking, BookingStatus, Customer, Package, Payment } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { logoBase64 } from '../data/logo';
-import { amiriFont } from '../lib/amiri-font';
 
 const statusColors: Record<BookingStatus, string> = {
     Pending: 'bg-yellow-100 text-yellow-800',
@@ -26,13 +26,15 @@ const statusColors: Record<BookingStatus, string> = {
 const bookingStatuses: BookingStatus[] = ['Pending', 'Deposited', 'Confirmed', 'Visa Processed', 'Ticketed', 'Departed', 'Completed', 'Cancelled'];
 
 const Bookings: React.FC = () => {
-    const { t, bookings, setBookings, customers, packages, payments, language, addToast, currentUser, logActivity } = useApp();
+    const { t, bookings, setBookings, customers, packages, payments, addToast, currentUser, logActivity } = useApp();
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [invoiceBooking, setInvoiceBooking] = useState<Booking | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
 
     // State for filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -116,6 +118,16 @@ const Bookings: React.FC = () => {
         setIsFormModalOpen(false);
         setEditingBooking(null);
     };
+    
+    const handleOpenDetailsModal = (booking: Booking) => {
+        setViewingBooking(booking);
+        setIsDetailsModalOpen(true);
+    };
+
+    const handleCloseDetailsModal = () => {
+        setViewingBooking(null);
+        setIsDetailsModalOpen(false);
+    };
 
     const handleDeleteBooking = (bookingId: string) => {
         setDeletingBookingId(bookingId);
@@ -180,25 +192,25 @@ const Bookings: React.FC = () => {
         doc.text(t('billTo'), 14, 110, { align: 'left' });
         doc.setFontSize(10);
         doc.setTextColor(0,0,0);
-        const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
+        const customerInfo = `${customer.name}\n${customer.email || 'N/A'}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
         doc.text(customerInfo, 14, 116, { align: 'left' });
         
         // Items Table
         let lastY = 140;
-        const autoTableStyles = { theme: 'striped', headStyles: { fillColor: [22, 101, 52] } };
+        const autoTableStyles = { theme: 'striped' as const, headStyles: { fillColor: [22, 101, 52] } };
         if (booking.isTicketOnly && booking.flightDetails) {
-            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('details')]], body: [
+            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('invoiceDetails')]], body: [
                 [t('airline'), `${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`],
                 [t('departureDate'), new Date(booking.flightDetails.departureDate).toLocaleDateString()],
                 [t('returnDate'), new Date(booking.flightDetails.returnDate).toLocaleDateString()],
             ], startY: lastY });
             lastY = (doc as any).lastAutoTable.finalY;
         } else if (pkg) {
-            let body = [[t('package'), `${pkg.name} (${pkg.duration} ${t('duration')})`], [t('hotelMakkah'), pkg.hotelMakkah], [t('hotelMadinah'), pkg.hotelMadinah]];
+            let body: (string | number)[][] = [[t('package'), `${pkg.name} (${pkg.packageCode})`], [t('hotelMakkah'), pkg.hotelMakkah], [t('hotelMadinah'), pkg.hotelMadinah]];
             if (booking.withoutBed) { body.push([t('roomType'), t('withoutBedShort')]); }
             else { body.push([t('roomType'), booking.roomType || 'N/A'], [t('meals'), booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A']); }
             if (booking.flightDetails) { body.push([t('airline'), `${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`], [t('departureDate'), new Date(booking.flightDetails.departureDate).toLocaleDateString()], [t('returnDate'), new Date(booking.flightDetails.returnDate).toLocaleDateString()]); }
-            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('details')]], body, startY: lastY });
+            autoTable(doc, { ...autoTableStyles, head: [[t('itemDescription'), t('invoiceDetails')]], body, startY: lastY });
             lastY = (doc as any).lastAutoTable.finalY;
         }
 
@@ -218,7 +230,7 @@ const Bookings: React.FC = () => {
         }
         
         // Financial Summary
-        const finalYPos = lastY + 15;
+        let finalYPos = lastY + 15;
         doc.setLineWidth(0.2);
         doc.line(140, finalYPos - 5, 200, finalYPos - 5);
         if (booking.isTicketOnly) {
@@ -226,7 +238,7 @@ const Bookings: React.FC = () => {
             doc.setFontSize(14);
             doc.setFont('Helvetica', 'bold');
             doc.setTextColor(22, 163, 74);
-            doc.text(`${t('totalPaid')}:`, 140, finalYPos + 7, { align: 'right' });
+            doc.text(`${t('totalAmount')}:`, 140, finalYPos + 7, { align: 'right' });
             doc.text(`EGP ${paid.toLocaleString()}`, 200, finalYPos + 7, { align: 'right' });
         } else {
             const price = pkg?.price || 0;
@@ -244,121 +256,32 @@ const Bookings: React.FC = () => {
             if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
             doc.text(`${t('amountDue')}:`, 140, finalYPos + 16, { align: 'right' });
             doc.text(`EGP ${due.toLocaleString()}`, 200, finalYPos + 16, { align: 'right' });
+            finalYPos += 16;
         }
+
+        // Terms & Notes
+        const notes = "Notes & Terms:\n- Please verify all details on the invoice are correct.\n- Prices are subject to change based on seasonality and availability.\n- Cancellation policies apply as per the signed agreement.";
+        const textLines = doc.splitTextToSize(notes, 180);
+        const textHeight = textLines.length * 5; // Approximate height
+
+        if (finalYPos + textHeight > doc.internal.pageSize.height - 20) { // Check if it fits
+            doc.addPage();
+            finalYPos = 20;
+        }
+
+        doc.setFontSize(9);
+        doc.setTextColor(120);
+        doc.text(notes, 14, finalYPos + 10);
         
         // Footer
         doc.setFontSize(8);
         doc.setFont('Helvetica', 'normal');
         doc.setTextColor(150);
-        doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, (doc.internal.pageSize.height) - 10, { align: 'center' });
-    };
-
-    const generateArabicInvoice = async (doc: jsPDF, booking: Booking, customer: Customer, pkg: Package | undefined) => {
-        doc.setFont('Amiri');
-        
-        // Header
-        const img = new Image();
-        img.src = logoBase64;
-        await new Promise(resolve => { if (img.complete) resolve(true); else img.onload = resolve; });
-        const logoWidth = 45;
-        const logoHeight = (logoWidth / img.width) * img.height;
-        doc.addImage(logoBase64, 'JPEG', 150, 15, logoWidth, logoHeight);
-        doc.setFontSize(20);
-        doc.setTextColor(34, 197, 94);
-        doc.text("زهرة النوبة للسياحة", 140, 30, { align: 'right' });
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.text("6 شارع السلطان ابوالعلا خلف مكتب مصر الطيران, أسوان", 140, 38, { align: 'right' });
-        doc.text("Mobile: +201098888525 - Email: nft7@gmail.com", 140, 44, { align: 'right' });
-
-        // Invoice Title
-        const invoiceTitle = booking.isTicketOnly ? t('flightTicketInvoice') : t('invoice');
-        doc.setFontSize(26);
-        doc.setTextColor(40);
-        doc.text(invoiceTitle.toUpperCase(), 195, 70, { align: 'right' });
-        doc.setLineWidth(0.5);
-        doc.line(14, 73, 200, 73);
-
-        // Invoice Details
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`${t('bookingId')}: ${booking.id}`, 195, 85, { align: 'right' });
-        doc.text(`${t('bookingDate')}: ${new Date(booking.bookingDate).toLocaleDateString()}`, 195, 91, { align: 'right' });
-        doc.text(`${t('invoiceDate')}: ${new Date().toLocaleDateString()}`, 195, 97, { align: 'right' });
-        
-        // Customer Details
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(t('billTo'), 195, 110, { align: 'right' });
-        doc.setFontSize(10);
-        doc.setTextColor(0,0,0);
-        const customerInfo = `${customer.name}\n${customer.email}\n${customer.phone}\n${t('passportNumber')}: ${customer.passportNumber}`;
-        doc.text(customerInfo, 195, 116, { align: 'right' });
-        
-        // Items Table
-        let lastY = 140;
-        const autoTableStyles = { theme: 'striped', styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right', fillColor: [22, 101, 52] } };
-        if (booking.isTicketOnly && booking.flightDetails) {
-            autoTable(doc, { ...autoTableStyles, head: [[t('details'), t('itemDescription')]], body: [
-                [`${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`, t('airline')],
-                [new Date(booking.flightDetails.departureDate).toLocaleDateString(), t('departureDate')],
-                [new Date(booking.flightDetails.returnDate).toLocaleDateString(), t('returnDate')],
-            ], startY: lastY });
-            lastY = (doc as any).lastAutoTable.finalY;
-        } else if (pkg) {
-            let body = [[`${pkg.name} (${pkg.duration} ${t('duration')})`, t('package')], [pkg.hotelMakkah, t('hotelMakkah')], [pkg.hotelMadinah, t('hotelMadinah')]];
-            if (booking.withoutBed) { body.push([t('withoutBedShort'), t('roomType')]); }
-            else { body.push([booking.roomType || 'N/A', t('roomType')], [booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A', t('meals')]); }
-            if (booking.flightDetails) { body.push([`${booking.flightDetails.airline} - ${booking.flightDetails.flightNumber}`, t('airline')], [new Date(booking.flightDetails.departureDate).toLocaleDateString(), t('departureDate')], [new Date(booking.flightDetails.returnDate).toLocaleDateString(), t('returnDate')]); }
-            autoTable(doc, { ...autoTableStyles, head: [[t('details'), t('itemDescription')]], body, startY: lastY });
-            lastY = (doc as any).lastAutoTable.finalY;
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' });
         }
-
-        // Payment History
-        const relevantPayments = payments.filter(p => p.bookingId === booking.id);
-        if (relevantPayments.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(40);
-            doc.text(t('paymentHistory'), 195, lastY + 15, { align: 'right' });
-            autoTable(doc, { 
-                theme: 'grid', styles: { font: 'Amiri', halign: 'right' }, headStyles: { font: 'Amiri', halign: 'right', fillColor: [71, 85, 105] },
-                head: [[t('amount'), t('paymentMethod'), t('paymentDate')]], 
-                body: relevantPayments.map(p => [`EGP ${p.amount.toLocaleString()}`, t(p.method.replace(' ', '') as any), new Date(p.paymentDate).toLocaleDateString()]), 
-                startY: lastY + 18, 
-            });
-            lastY = (doc as any).lastAutoTable.finalY;
-        }
-        
-        // Financial Summary
-        const finalYPos = lastY + 15;
-        doc.setLineWidth(0.2);
-        doc.line(140, finalYPos - 5, 200, finalYPos - 5);
-        if (booking.isTicketOnly) {
-            const paid = booking.ticketTotalPaid || 0;
-            doc.setFontSize(14);
-            doc.setTextColor(22, 163, 74);
-            doc.text(`${t('totalPaid')}:`, 195, finalYPos + 7, { align: 'right' });
-            doc.text(`EGP ${paid.toLocaleString()}`, 170, finalYPos + 7, { align: 'right' });
-        } else {
-            const price = pkg?.price || 0;
-            const paid = payments.filter(p => p.bookingId === booking.id).reduce((sum, p) => sum + p.amount, 0);
-            const due = price - paid;
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`${t('subtotal')}:`, 195, finalYPos, { align: 'right' });
-            doc.text(`EGP ${price.toLocaleString()}`, 170, finalYPos, { align: 'right' });
-            doc.text(`${t('amountPaid')}:`, 195, finalYPos + 7, { align: 'right' });
-            doc.text(`EGP ${paid.toLocaleString()}`, 170, finalYPos + 7, { align: 'right' });
-            doc.setFontSize(14);
-            if (due > 0) doc.setTextColor(220, 38, 38); else doc.setTextColor(22, 163, 74);
-            doc.text(`${t('amountDue')}:`, 195, finalYPos + 16, { align: 'right' });
-            doc.text(`EGP ${due.toLocaleString()}`, 170, finalYPos + 16, { align: 'right' });
-        }
-
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text('Thank you for your business!', doc.internal.pageSize.width / 2, (doc.internal.pageSize.height) - 10, { align: 'center' });
     };
 
     const confirmGenerateInvoice = async () => {
@@ -383,19 +306,9 @@ const Bookings: React.FC = () => {
 
         try {
             const doc = new jsPDF();
-            const isArabic = language === 'ar';
+            await generateEnglishInvoice(doc, invoiceBooking, customer, pkg);
 
-            if (isArabic) {
-                const amiriFontB64 = amiriFont.split(',')[1];
-                doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
-                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                await generateArabicInvoice(doc, invoiceBooking, customer, pkg);
-            } else {
-                await generateEnglishInvoice(doc, invoiceBooking, customer, pkg);
-            }
-
-            doc.save(`Invoice-${invoiceBooking.id}.pdf`);
-            addToast({ title: t('success'), message: t('invoiceGeneratedSuccess'), type: 'success' });
+            doc.output('dataurlnewwindow');
 
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -440,7 +353,7 @@ const Bookings: React.FC = () => {
                     [t('meals')]: 'N/A',
                     [t('price')]: booking.ticketCostPrice,
                     [t('totalPaid')]: booking.ticketTotalPaid,
-                    [t('amountDue')]: (booking.ticketTotalPaid || 0) - (booking.ticketCostPrice || 0), // Profit
+                    [t('remainingBalance')]: (booking.ticketTotalPaid || 0) - (booking.ticketCostPrice || 0), // Profit
                 }
             }
 
@@ -452,7 +365,7 @@ const Bookings: React.FC = () => {
                 [t('meals')]: booking.withoutBed ? 'N/A' : (booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A'),
                 [t('price')]: pkg?.price || 0,
                 [t('totalPaid')]: totalPaidForBooking,
-                [t('amountDue')]: (pkg?.price || 0) - totalPaidForBooking,
+                [t('remainingBalance')]: (pkg?.price || 0) - totalPaidForBooking,
             };
         });
 
@@ -462,6 +375,74 @@ const Bookings: React.FC = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Bookings');
         XLSX.writeFile(workbook, 'Bookings_Export.xlsx');
+    };
+
+    const handleExportPdf = () => {
+        if (filteredBookings.length === 0) {
+            addToast({ title: t('error'), message: t('noDataToExport'), type: 'error' });
+            return;
+        }
+    
+        const doc = new jsPDF({ orientation: "landscape" });
+    
+        const head = [[
+            t('bookingId'),
+            t('customerName'),
+            t('package'),
+            t('status'),
+            t('price'),
+            t('paid'),
+            t('remainingBalance')
+        ]];
+    
+        const body = filteredBookings.map(booking => {
+            const customer = customers.find(c => c.id === booking.customerId);
+            const pkg = packages.find(p => p.id === booking.packageId);
+            const totalPaidForBooking = payments
+                .filter(p => p.bookingId === booking.id)
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            let price = 0;
+            let paid = 0;
+            let remaining = 0;
+            let packageName = 'N/A';
+    
+            if (booking.isTicketOnly) {
+                price = booking.ticketTotalPaid || 0;
+                paid = booking.ticketTotalPaid || 0; // For ticket only, paid is the sale price
+                remaining = 0;
+                packageName = t('ticketOnlySale');
+            } else if (pkg) {
+                price = pkg.price;
+                paid = totalPaidForBooking;
+                remaining = price - paid;
+                packageName = pkg.name;
+            }
+    
+            return [
+                booking.id,
+                customer?.name || 'N/A',
+                packageName,
+                t(booking.status.replace(' ', '') as any),
+                `EGP ${price.toLocaleString()}`,
+                `EGP ${paid.toLocaleString()}`,
+                `EGP ${remaining.toLocaleString()}`
+            ];
+        });
+    
+        doc.text(`${t('companyName')} - ${t('bookingList')}`, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`${t('reportDate')}: ${new Date().toLocaleDateString()}`, 14, 22);
+    
+        autoTable(doc, {
+            head: head,
+            body: body,
+            startY: 28,
+            headStyles: { fillColor: [22, 101, 52] }, // Primary color
+            styles: { font: 'Helvetica' },
+        });
+    
+        doc.save('Bookings_Export.pdf');
     };
 
     return (
@@ -477,6 +458,14 @@ const Bookings: React.FC = () => {
                         <FileSpreadsheet className="w-5 h-5" />
                         <span>{t('exportExcel')}</span>
                     </button>
+                    <button
+                        onClick={handleExportPdf}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled={filteredBookings.length === 0}
+                    >
+                        <FileDown className="w-5 h-5" />
+                        <span>{t('exportPDF')}</span>
+                    </button>
                     <button 
                         onClick={handleOpenAddModal}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
@@ -489,13 +478,13 @@ const Bookings: React.FC = () => {
 
             <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row flex-wrap items-center gap-4">
                 <div className="relative flex-grow w-full md:w-auto">
-                    <Search className="absolute left-3 rtl:right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder={t('searchBookings')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 rtl:pr-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
                     />
                 </div>
                 <div className="w-full md:w-auto md:flex-shrink-0 md:w-48">
@@ -529,7 +518,7 @@ const Bookings: React.FC = () => {
             
             {filteredBookings.length > 0 ? (
                 <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+                    <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">{t('bookingId')}</th>
@@ -537,7 +526,7 @@ const Bookings: React.FC = () => {
                                 <th scope="col" className="px-6 py-3">{t('package')}</th>
                                 <th scope="col" className="px-6 py-3">{t('roomType')}</th>
                                 <th scope="col" className="px-6 py-3">{t('status')}</th>
-                                <th scope="col" className="px-6 py-3">{t('totalPaid')}</th>
+                                <th scope="col" className="px-6 py-3">{t('financials')}</th>
                                 <th scope="col" className="px-6 py-3 text-center">{t('actions')}</th>
                             </tr>
                         </thead>
@@ -548,6 +537,8 @@ const Bookings: React.FC = () => {
                                 const totalPaidForBooking = payments
                                     .filter(p => p.bookingId === booking.id)
                                     .reduce((sum, p) => sum + p.amount, 0);
+                                const packagePrice = pkg?.price || 0;
+                                const remaining = packagePrice - totalPaidForBooking;
                                 return (
                                     <tr key={booking.id} className="bg-white border-b hover:bg-gray-50 transition-colors duration-150">
                                         <td className="px-6 py-4 font-medium text-gray-900">{booking.id}</td>
@@ -561,13 +552,36 @@ const Bookings: React.FC = () => {
                                                 {t(booking.status.replace(' ', '') as any)}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">EGP {booking.isTicketOnly ? (booking.ticketTotalPaid || 0).toLocaleString() : totalPaidForBooking.toLocaleString()}</td>
+                                        <td className="px-6 py-4">
+                                            {booking.isTicketOnly ? (
+                                                <span className="font-semibold text-gray-800">
+                                                    EGP {(booking.ticketTotalPaid || 0).toLocaleString()}
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <div className="text-sm">
+                                                        <span className="font-semibold text-gray-800">
+                                                            EGP {totalPaidForBooking.toLocaleString()}
+                                                        </span>
+                                                        <span className="text-gray-500"> / {packagePrice.toLocaleString()}</span>
+                                                    </div>
+                                                    {remaining > 0 && (
+                                                        <div className="text-xs text-accent font-medium mt-1">
+                                                            {`${t('remainingBalance')}: EGP ${remaining.toLocaleString()}`}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center items-center gap-4">
+                                                <button onClick={() => handleOpenDetailsModal(booking)} className="text-gray-500 hover:text-gray-800" title={t('view')}>
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
+                                                <button onClick={() => handleOpenEditModal(booking)} className="text-blue-600 hover:text-blue-800" title={t('edit')}><Edit className="w-5 h-5" /></button>
                                                 <button onClick={() => handleOpenInvoiceModal(booking)} className="text-gray-500 hover:text-gray-800" title={t('invoice')}>
                                                     <Printer className="w-5 h-5" />
                                                 </button>
-                                                <button onClick={() => handleOpenEditModal(booking)} className="text-blue-600 hover:text-blue-800" title={t('edit')}><Edit className="w-5 h-5" /></button>
                                                 {currentUser?.role === 'Admin' && (
                                                     <button onClick={() => handleDeleteBooking(booking.id)} className="text-accent hover:text-red-800" title={t('delete')}><Trash2 className="w-5 h-5" /></button>
                                                 )}
@@ -601,6 +615,17 @@ const Bookings: React.FC = () => {
                 />
             </Modal>
 
+            {viewingBooking && (
+                <BookingDetailsModal
+                    isOpen={isDetailsModalOpen}
+                    onClose={handleCloseDetailsModal}
+                    booking={viewingBooking}
+                    customer={customers.find(c => c.id === viewingBooking.customerId)}
+                    pkg={packages.find(p => p.id === viewingBooking.packageId)}
+                    bookingPayments={payments.filter(p => p.bookingId === viewingBooking.id)}
+                />
+            )}
+
              <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
@@ -608,16 +633,47 @@ const Bookings: React.FC = () => {
                 title={t('confirmDeletionTitle')}
                 message={t('confirmDeleteBooking')}
             />
-            <ConfirmationModal
-                isOpen={isInvoiceModalOpen}
-                onClose={() => setIsInvoiceModalOpen(false)}
-                onConfirm={confirmGenerateInvoice}
-                title={t('invoice')}
-                message={t('confirmInvoiceGeneration')}
-                confirmText={t('generatePDF')}
-                icon={Printer}
-                iconColor="text-primary"
-            />
+            
+            {isInvoiceModalOpen && invoiceBooking && (() => {
+                const customer = customers.find(c => c.id === invoiceBooking.customerId);
+                const pkg = packages.find(p => p.id === invoiceBooking.packageId);
+                const price = invoiceBooking.isTicketOnly ? invoiceBooking.ticketTotalPaid : pkg?.price;
+
+                return (
+                    <Modal
+                        isOpen={isInvoiceModalOpen}
+                        onClose={() => { setIsInvoiceModalOpen(false); setInvoiceBooking(null); }}
+                        title={t('invoice')}
+                    >
+                        <div className="space-y-4">
+                            <p className="text-gray-600">{t('confirmInvoiceGeneration')}</p>
+                            <div className="p-4 bg-gray-50 rounded-lg border space-y-2 text-sm">
+                                <div className="flex justify-between"><span className="font-semibold text-gray-500">{t('bookingId')}:</span> <span className="font-mono">{invoiceBooking.id}</span></div>
+                                <div className="flex justify-between"><span className="font-semibold text-gray-500">{t('customer')}:</span> <span>{customer?.name || 'N/A'}</span></div>
+                                <div className="flex justify-between"><span className="font-semibold text-gray-500">{t('package')}:</span> <span className="text-right">{invoiceBooking.isTicketOnly ? t('ticketOnlySale') : (pkg?.name || 'N/A')}</span></div>
+                                <div className="flex justify-between font-bold text-base"><span className="font-semibold text-gray-500">{t('totalPackagePrice')}:</span> <span>EGP {price?.toLocaleString() || '0'}</span></div>
+                            </div>
+                            <div className="flex justify-end gap-4 pt-4 border-t mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsInvoiceModalOpen(false); setInvoiceBooking(null); }}
+                                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                                >
+                                    {t('cancel')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmGenerateInvoice}
+                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors flex items-center gap-2"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    {t('generatePDF')}
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
+                );
+            })()}
         </div>
     );
 };

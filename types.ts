@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ar';
+
 
 export type UserRole = 'Admin' | 'Manager' | 'Staff';
 
@@ -52,7 +52,6 @@ export interface Booking {
   packageId: string;
   bookingDate: string;
   status: BookingStatus;
-  totalPaid: number;
   flightDetails?: Flight;
   roomType?: 'Double' | 'Triple' | 'Quad' | 'Quintuple';
   meals?: MealType;
@@ -77,9 +76,6 @@ export interface Payment {
   method: 'Cash' | 'Bank Transfer' | 'Credit Card';
 }
 
-export type ExpenseCategoryType = 'Rent' | 'Bills' | 'Salaries' | 'Marketing' | 'Other';
-
-// FIX: Added ExpenseCategory interface for dynamic expense category management.
 export interface ExpenseCategory {
     id: string;
     name: string;
@@ -87,7 +83,6 @@ export interface ExpenseCategory {
 
 export interface Expense {
   id:string;
-  // FIX: Changed category type to string to support user-defined categories.
   category: string;
   description: string;
   amount: number;
@@ -115,7 +110,6 @@ export interface Task {
 }
 
 export type ActivityAction = 'Created' | 'Updated' | 'Deleted' | 'Completed' | 'Incomplete';
-// FIX: Added 'ExpenseCategory' to the ActivityEntity type.
 export type ActivityEntity = 'Customer' | 'Package' | 'Booking' | 'Payment' | 'Expense' | 'Task' | 'User' | 'Document' | 'ExpenseCategory';
 
 export interface ActivityLogEntry {

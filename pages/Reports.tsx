@@ -5,10 +5,9 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Navigate } from 'react-router-dom';
-import { amiriFont } from '../lib/amiri-font';
 
 const Reports: React.FC = () => {
-    const { t, language, customers, bookings, packages, payments, expenses, currentUser } = useApp();
+    const { t, customers, bookings, packages, payments, expenses, currentUser } = useApp();
     const [reportType, setReportType] = useState('customerList');
     const [layoutType, setLayoutType] = useState('standardList');
     const [loading, setLoading] = useState(false);
@@ -31,7 +30,8 @@ const Reports: React.FC = () => {
                 body = bookings.map(b => {
                     const customer = customers.find(c => c.id === b.customerId)?.name || 'N/A';
                     const pkg = packages.find(p => p.id === b.packageId)?.name || 'N/A';
-                    return [b.id, customer, pkg, b.status, `EGP ${b.totalPaid.toLocaleString()}`];
+                    const totalPaid = payments.filter(p => p.bookingId === b.id).reduce((sum, p) => sum + p.amount, 0);
+                    return [b.id, customer, pkg, b.status, `EGP ${totalPaid.toLocaleString()}`];
                 });
                 break;
             case 'financialSummary':
@@ -55,32 +55,10 @@ const Reports: React.FC = () => {
         autoTable(doc, { head, body, startY: 22 });
     };
 
-    const generateArabicReport = (doc: jsPDF) => {
-        const title = `${t('companyName')} - ${t(reportType as any)}`;
-        doc.text(title, doc.internal.pageSize.width - 14, 16, { align: 'right' });
-        const { head, body } = getReportData();
-        autoTable(doc, {
-            head, body, startY: 22,
-            styles: { font: 'Amiri', halign: 'right' },
-            headStyles: { font: 'Amiri', halign: 'right' },
-        });
-    };
-
     const generatePdf = () => {
         setLoading(true);
         const doc = new jsPDF();
-        const isArabic = language === 'ar';
-        
-        if (isArabic) {
-            const amiriFontB64 = amiriFont.split(',')[1];
-            doc.addFileToVFS('Amiri-Regular.ttf', amiriFontB64);
-            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-            doc.setFont('Amiri');
-            generateArabicReport(doc);
-        } else {
-            generateEnglishReport(doc);
-        }
-        
+        generateEnglishReport(doc);
         doc.save(`${reportType}.pdf`);
         setLoading(false);
     };
@@ -208,7 +186,8 @@ const Reports: React.FC = () => {
                     data = bookings.map(b => {
                         const customer = customers.find(c => c.id === b.customerId)?.name || 'N/A';
                         const pkg = packages.find(p => p.id === b.packageId)?.name || 'N/A';
-                        return { [t('bookingId')]: b.id, [t('customer')]: customer, [t('package')]: pkg, [t('status')]: b.status, [t('totalPaid')]: b.totalPaid };
+                        const totalPaid = payments.filter(p => p.bookingId === b.id).reduce((sum, p) => sum + p.amount, 0);
+                        return { [t('bookingId')]: b.id, [t('customer')]: customer, [t('package')]: pkg, [t('status')]: b.status, [t('totalPaid')]: totalPaid };
                     });
                     sheetName = t('bookingList');
                     break;
@@ -284,7 +263,6 @@ const Reports: React.FC = () => {
                         <span>{loading ? t('loading') : t('generateExcel')}</span>
                     </button>
                 </div>
-                <p className="text-xs text-center text-gray-500">Note: PDF generation has limited support for Arabic text without font embedding.</p>
             </div>
         </div>
     );

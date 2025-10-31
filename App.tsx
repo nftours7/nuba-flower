@@ -33,7 +33,6 @@ const App: React.FC = () => {
                 <Route path="/packages" element={<Packages />} />
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/finance" element={<Finance />} />
-                {/* FIX: Add the route for the new Expense Categories page. */}
                 <Route path="/expense-categories" element={<ExpenseCategories />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/tasks" element={<Tasks />} />

@@ -1,6 +1,7 @@
 
 import React, { useMemo } from 'react';
-import { Users, BookOpenCheck, DollarSign, Briefcase, UserPlus, Receipt, Edit3, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, BookOpenCheck, DollarSign, Briefcase, UserPlus, Receipt, Edit3, Trash2, CheckCircle, XCircle, PlusCircle } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
 import BarChart from '../components/BarChart';
 import DonutChart from '../components/DonutChart';
@@ -134,9 +135,27 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-800">{t('welcomeMessage', { name: currentUser?.name || 'User' })}</h1>
-                <p className="text-gray-500 mt-1">{t('welcomeSub')}</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800">{t('welcomeMessage', { name: currentUser?.name || 'User' })}</h1>
+                    <p className="text-gray-500 mt-1">{t('welcomeSub')}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <Link
+                        to="/customers"
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        <span>{t('addCustomer')}</span>
+                    </Link>
+                    <Link
+                        to="/bookings"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    >
+                        <PlusCircle className="w-5 h-5" />
+                        <span>{t('addBooking')}</span>
+                    </Link>
+                </div>
             </div>
             
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

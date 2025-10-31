@@ -1,12 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-// FIX: Import LayoutGrid icon for the new Expense Categories link.
 import { Home, Users, Package, Book, DollarSign, FileText, ClipboardCheck, UserCog, History, LayoutGrid } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
 import Logo from './Logo';
 
 const Sidebar: React.FC = () => {
-  const { t, language, currentUser } = useApp();
+  const { t, currentUser } = useApp();
 
   const allNavItems = [
     { to: '/dashboard', label: t('dashboard'), icon: Home, roles: ['Admin', 'Manager', 'Staff'] },
@@ -15,7 +14,6 @@ const Sidebar: React.FC = () => {
     { to: '/packages', label: t('packages'), icon: Package, roles: ['Admin', 'Manager', 'Staff'] },
     { to: '/tasks', label: t('tasks'), icon: ClipboardCheck, roles: ['Admin', 'Manager', 'Staff'] },
     { to: '/finance', label: t('finance'), icon: DollarSign, roles: ['Admin'] },
-    // FIX: Add a new sidebar link for Expense Categories.
     { to: '/expense-categories', label: t('expenseCategories'), icon: LayoutGrid, roles: ['Admin'] },
     { to: '/reports', label: t('reports'), icon: FileText, roles: ['Admin'] },
     { to: '/users', label: t('users'), icon: UserCog, roles: ['Admin'] },
@@ -28,7 +26,7 @@ const Sidebar: React.FC = () => {
   const activeLinkClasses = "bg-primary text-white hover:bg-primary hover:text-white shadow-lg font-bold";
 
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-white border-e rtl:border-s rtl:border-e-0">
+    <aside className="hidden md:flex flex-col w-64 bg-white border-e">
       <div className="flex items-center justify-center h-20 border-b px-4">
         <Logo className="h-14" />
       </div>
@@ -40,7 +38,7 @@ const Sidebar: React.FC = () => {
             className={({ isActive }) => `${linkClasses} ${isActive ? activeLinkClasses : ''}`}
           >
             <item.icon className="w-5 h-5" />
-            <span className={`mx-4 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>{item.label}</span>
+            <span className="mx-4 font-sans">{item.label}</span>
           </NavLink>
         ))}
       </nav>

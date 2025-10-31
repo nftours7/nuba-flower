@@ -25,7 +25,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
     const [packageId, setPackageId] = useState('');
     const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
     const [status, setStatus] = useState<BookingStatus>('Pending');
-    const [totalPaid, setTotalPaid] = useState(0);
     const [roomType, setRoomType] = useState<Booking['roomType']>('Double');
     const [meals, setMeals] = useState<MealType>('Breakfast');
     const [withoutBed, setWithoutBed] = useState(false);
@@ -51,7 +50,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
             setPackageId(booking.packageId);
             setBookingDate(booking.bookingDate);
             setStatus(booking.status);
-            setTotalPaid(booking.totalPaid);
             setRoomType(booking.roomType || 'Double');
             setMeals(booking.meals || 'Breakfast');
             setWithoutBed(booking.withoutBed || false);
@@ -76,7 +74,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
             setPackageId(packages[0]?.id || '');
             setBookingDate(new Date().toISOString().split('T')[0]);
             setStatus('Pending');
-            setTotalPaid(0);
             setRoomType('Double');
             setMeals('Breakfast');
             setWithoutBed(firstCustomer ? firstCustomer.age < 10 : false);
@@ -164,7 +161,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
             packageId: isTicketOnly ? '' : packageId,
             bookingDate,
             status,
-            totalPaid: isTicketOnly ? 0 : totalPaid,
             roomType: isTicketOnly || withoutBed ? undefined : roomType,
             meals: isTicketOnly || withoutBed ? undefined : meals,
             withoutBed: isTicketOnly ? false : withoutBed,
