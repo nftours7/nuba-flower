@@ -50,7 +50,7 @@ const initialData = {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-
+  
   // Load initial state from localStorage or use mock data
   const [appData, setAppData] = useState(() => {
     try {

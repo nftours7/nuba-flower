@@ -5,7 +5,7 @@ import { UploadCloud, LoaderCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface CustomerFormProps {
-  onSave: (customer: Omit<Customer, 'documents' | 'dateAdded'> & { id?: string }) => void;
+  onSave: (customer: Omit<Customer, 'documents' | 'dateAdded' | 'id'> & { id?: string, scannedPassportFile?: { url: string, name: string, type: string } }) => void;
   onCancel: () => void;
   customer?: Customer | null; // Optional for editing
   flightDepartureDate?: string; // Optional for validation against a specific flight
@@ -26,6 +26,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onCancel, customer,
     const [scanState, setScanState] = useState<ScanState>('idle');
     const [scanError, setScanError] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [scannedPassportFile, setScannedPassportFile] = useState<{ url: string, name: string, type: string } | null>(null);
 
     const isAdding = !customer;
 
@@ -51,6 +52,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onCancel, customer,
         setScanState('idle');
         setScanError(null);
         setFileName(null);
+        setScannedPassportFile(null);
     }, [customer]);
 
     const calculateAge = (dobString: string): number => {
@@ -154,6 +156,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onCancel, customer,
                 setGender(result.gender);
             }
             
+            const objectUrl = URL.createObjectURL(file);
+            setScannedPassportFile({ url: objectUrl, name: file.name, type: file.type });
+            
             setScanState('success');
             setTimeout(() => setScanState('idle'), 2500);
 
@@ -224,6 +229,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onCancel, customer,
             passportExpiry,
             age,
             gender,
+            scannedPassportFile: scannedPassportFile || undefined,
         });
     };
     

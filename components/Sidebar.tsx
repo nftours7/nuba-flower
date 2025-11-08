@@ -13,9 +13,9 @@ const Sidebar: React.FC = () => {
     { to: '/customers', label: t('customers'), icon: Users, roles: ['Admin', 'Manager', 'Staff'] },
     { to: '/packages', label: t('packages'), icon: Package, roles: ['Admin', 'Manager', 'Staff'] },
     { to: '/tasks', label: t('tasks'), icon: ClipboardCheck, roles: ['Admin', 'Manager', 'Staff'] },
-    { to: '/finance', label: t('finance'), icon: DollarSign, roles: ['Admin'] },
-    { to: '/expense-categories', label: t('expenseCategories'), icon: LayoutGrid, roles: ['Admin'] },
-    { to: '/reports', label: t('reports'), icon: FileText, roles: ['Admin'] },
+    { to: '/finance', label: t('finance'), icon: DollarSign, roles: ['Admin', 'Manager'] },
+    { to: '/expense-categories', label: t('expenseCategories'), icon: LayoutGrid, roles: ['Admin', 'Manager'] },
+    { to: '/reports', label: t('reports'), icon: FileText, roles: ['Admin', 'Manager'] },
     { to: '/users', label: t('users'), icon: UserCog, roles: ['Admin'] },
     { to: '/activity-log', label: t('activityLog'), icon: History, roles: ['Admin'] },
   ];

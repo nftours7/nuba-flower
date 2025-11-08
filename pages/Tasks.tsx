@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../hooks/useApp';
 import { PlusCircle, Edit, Trash2, X, ClipboardCheck } from 'lucide-react';
@@ -165,7 +167,7 @@ const Tasks: React.FC = () => {
 
             {filteredTasks.length > 0 ? (
                 <div className="bg-white rounded-xl shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+                    <table className="w-full text-sm text-start text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="p-4"></th>
@@ -183,7 +185,7 @@ const Tasks: React.FC = () => {
                                 const isTaskOverdue = isOverdue(task.dueDate) && !task.isCompleted;
 
                                 return (
-                                    <tr key={task.id} className={`border-b transition-colors duration-150 ${task.isCompleted ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white hover:bg-gray-50'} ${isTaskOverdue ? 'border-l-4 border-red-500' : 'border-l-4 border-transparent'}`}>
+                                    <tr key={task.id} className={`border-b transition-colors duration-150 ${task.isCompleted ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white hover:bg-gray-50'} ${isTaskOverdue ? 'border-s-4 border-red-500' : 'border-s-4 border-transparent'}`}>
                                         <td className="p-4">
                                             <input type="checkbox" checked={task.isCompleted} onChange={() => handleToggleComplete(task.id)} className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary" />
                                         </td>
@@ -191,7 +193,7 @@ const Tasks: React.FC = () => {
                                         <td className="px-6 py-4">{booking ? `${booking.id} (${customer?.name})` : t('noRelatedBooking')}</td>
                                         <td className={`px-6 py-4 ${isTaskOverdue ? 'text-red-600 font-semibold' : ''}`}>
                                             {new Date(task.dueDate).toLocaleDateString()}
-                                            {isTaskOverdue && <span className="ml-2 rtl:mr-2 text-xs">({t('overdue')})</span>}
+                                            {isTaskOverdue && <span className="ms-2 text-xs">({t('overdue')})</span>}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[task.priority]}`}>{t(task.priority)}</span>
@@ -199,7 +201,7 @@ const Tasks: React.FC = () => {
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center items-center gap-4">
                                                 <button onClick={() => handleOpenEditModal(task)} className="text-blue-600 hover:text-blue-800" title={t('edit')}><Edit className="w-5 h-5" /></button>
-                                                {currentUser?.role === 'Admin' && (
+                                                {['Admin', 'Manager'].includes(currentUser?.role || '') && (
                                                     <button onClick={() => handleDeleteTask(task.id)} className="text-accent hover:text-red-800" title={t('delete')}><Trash2 className="w-5 h-5" /></button>
                                                 )}
                                             </div>

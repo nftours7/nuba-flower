@@ -11,7 +11,7 @@ interface TaskFormProps {
 const taskPriorities: TaskPriority[] = ['High', 'Medium', 'Low'];
 
 const TaskForm: React.FC<TaskFormProps> = ({ onSave, onCancel, task }) => {
-    const { t, bookings, customers, packages } = useApp();
+    const { t, bookings, customers } = useApp();
     const [title, setTitle] = useState('');
     const [bookingId, setBookingId] = useState<string | undefined>(undefined);
     const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
@@ -65,7 +65,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSave, onCancel, task }) => {
                         const customer = customers.find(c => c.id === b.customerId);
                         return (
                             <option key={b.id} value={b.id}>
-                                {b.id} - {customer?.name}
+                                {b.id} - {customer?.name || 'N/A'}
                             </option>
                         );
                     })}

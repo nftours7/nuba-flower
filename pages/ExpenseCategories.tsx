@@ -16,8 +16,8 @@ const ExpenseCategories: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
-    // Security: Only Admins can access this page
-    if (currentUser?.role !== 'Admin') {
+    // Security: Only Admins and Managers can access this page
+    if (!['Admin', 'Manager'].includes(currentUser?.role || '')) {
         return <Navigate to="/dashboard" replace />;
     }
 

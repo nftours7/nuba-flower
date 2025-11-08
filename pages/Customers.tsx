@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../hooks/useApp';
 import { PlusCircle, Edit, Trash2, Search, FileText, X, Users, Download } from 'lucide-react';
@@ -79,7 +80,7 @@ const Customers: React.FC = () => {
                     url: customerData.scannedPassportFile.url
                 };
                 newCustomer.documents.push(passportDoc);
-                logActivity('Created', 'Document', passportDoc.id, `{docName: '${passportDoc.name}', details: '${newCustomer.name}'}`);
+                logActivity('Created', 'Document', passportDoc.id, `'${passportDoc.name}' to ${newCustomer.name}`);
             }
             savedCustomer = newCustomer;
             setCustomers(prev => [newCustomer, ...prev]);
@@ -142,7 +143,7 @@ const Customers: React.FC = () => {
             message: t('documentAddedSuccess'),
             type: 'success'
         });
-        logActivity('Created', 'Document', document.id, `{docName: '${document.name}', details: '${customer.name}'}`);
+        logActivity('Created', 'Document', document.id, `'${document.name}' to ${customer.name}`);
     };
 
     const handleDeleteDocument = (customer: Customer, documentId: string) => {
@@ -158,7 +159,7 @@ const Customers: React.FC = () => {
                 message: t('documentDeletedSuccess'),
                 type: 'success'
             });
-            logActivity('Deleted', 'Document', documentId, `{docName: '${docToDelete.name}', details: '${customer.name}'}`);
+            logActivity('Deleted', 'Document', documentId, `'${docToDelete.name}' from ${customer.name}`);
         }
     };
     
@@ -183,13 +184,13 @@ const Customers: React.FC = () => {
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row flex-wrap items-center gap-4">
                 <div className="relative flex-grow w-full sm:w-auto">
-                    <Search className="absolute left-3 rtl:right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder={t('searchCustomers')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 rtl:pr-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="w-full ps-10 pe-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -206,7 +207,7 @@ const Customers: React.FC = () => {
             
             {filteredCustomers.length > 0 ? (
                 <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+                    <table className="w-full text-sm text-start text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">{t('customerName')}</th>
@@ -225,11 +226,18 @@ const Customers: React.FC = () => {
                                     <td className="px-6 py-4">{customer.passportExpiry}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex justify-center items-center gap-4">
-                                            <button onClick={() => handleOpenDocumentsModal(customer)} className="text-gray-500 hover:text-gray-800" title={t('documents')}>
-                                                <FileText className="w-5 h-5" />
-                                            </button>
+                                            <div className="relative">
+                                                <button onClick={() => handleOpenDocumentsModal(customer)} className="text-gray-500 hover:text-gray-800" title={t('documents')}>
+                                                    <FileText className="w-5 h-5" />
+                                                </button>
+                                                {customer.documents.length > 0 && (
+                                                    <span className="pointer-events-none absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">
+                                                        {customer.documents.length}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <button onClick={() => handleOpenEditModal(customer)} className="text-blue-600 hover:text-blue-800" title={t('edit')}><Edit className="w-5 h-5" /></button>
-                                            {currentUser?.role === 'Admin' && (
+                                            {['Admin', 'Manager'].includes(currentUser?.role || '') && (
                                                 <button onClick={() => handleDeleteCustomer(customer.id)} className="text-accent hover:text-red-800" title={t('delete')}><Trash2 className="w-5 h-5" /></button>
                                             )}
                                         </div>

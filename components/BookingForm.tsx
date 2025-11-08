@@ -13,9 +13,10 @@ interface BookingFormProps {
   onSave: (booking: Omit<Booking, 'id'> & { id?: string }) => void;
   onCancel: () => void;
   booking?: Booking | null;
+  initialPackageId?: string;
 }
 
-const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) => {
+const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking, initialPackageId }) => {
     const { t, customers, setCustomers, packages, bookings, addToast, logActivity } = useApp();
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     
@@ -67,11 +68,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
                 setAirline(''); setFlightNumber(''); setFlightDepartureDate(''); setFlightReturnDate('');
             }
         } else { // Add mode
-            setBookingType(null); // Show selection screen first
-            // Reset fields to default
+             // Reset fields to default
             const firstCustomer = customers[0];
             setCustomerId(firstCustomer?.id || '');
-            setPackageId(packages[0]?.id || '');
             setBookingDate(new Date().toISOString().split('T')[0]);
             setStatus('Pending');
             setRoomType('Double');
@@ -82,8 +81,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSave, onCancel, booking }) 
             setTicketTotalPaid(0);
             setShowFlightDetails(false);
             setAirline(''); setFlightNumber(''); setFlightDepartureDate(''); setFlightReturnDate('');
+
+            if (initialPackageId) {
+                setBookingType('package');
+                setPackageId(initialPackageId);
+            } else {
+                setBookingType(null); // Show selection screen first
+                setPackageId(packages[0]?.id || '');
+            }
         }
-    }, [booking, customers, packages, bookings]);
+    }, [booking, customers, packages, initialPackageId]);
     
     useEffect(() => {
         const currentCustomer = customers.find(c => c.id === customerId);

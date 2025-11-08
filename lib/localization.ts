@@ -3,6 +3,7 @@
 export const translations = {
   en: {
     // General
+    language: "English",
     companyName: "Nuba Flower Tours",
     search: "Search...",
     actions: "Actions",
@@ -156,6 +157,7 @@ export const translations = {
     noPackagesFound: "No packages found.",
     noPackagesFoundSub: "Would you like to create a new one?",
     addNewPackageCTA: "Add New Package",
+    bookNow: "Book Now",
     
     // Bookings
     addBooking: "Add New Booking",
@@ -329,6 +331,8 @@ export const translations = {
     totalAmount: "Total Amount",
     totalPaidToDate: "Total Paid to Date",
     remainingBalance: "Remaining Balance",
+    price_unit: "EGP {price}",
+    days_unit: "days",
     
     // Confirmations
     confirmDeletionTitle: "Confirm Deletion",
@@ -369,5 +373,5 @@ export const translations = {
     flightDetailsMissingForInvoice: "Cannot generate invoice: flight details are missing for this ticket sale.",
     invoicePackageMissingError: "Cannot generate invoice: The package for this booking could not be found (it may have been deleted).",
     invoiceCustomerMissingError: "Cannot generate invoice: The customer for this booking could not be found (they may have been deleted).",
-  },
+  }
 };

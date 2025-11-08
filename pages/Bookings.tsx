@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../hooks/useApp';
-import { PlusCircle, Edit, Trash2, Printer, Search, X, FileSpreadsheet, Book, Eye, FileDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Printer, Search, X, Book, Eye } from 'lucide-react';
 import Modal from '../components/Modal';
 import BookingForm from '../components/BookingForm';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -9,7 +10,6 @@ import BookingDetailsModal from '../components/BookingDetailsModal';
 import type { Booking, BookingStatus, Customer, Package, Payment } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { logoBase64 } from '../data/logo';
 
 const statusColors: Record<BookingStatus, string> = {
@@ -27,6 +27,9 @@ const bookingStatuses: BookingStatus[] = ['Pending', 'Deposited', 'Confirmed', '
 
 const Bookings: React.FC = () => {
     const { t, bookings, setBookings, customers, packages, payments, addToast, currentUser, logActivity } = useApp();
+    const location = useLocation();
+    const navigate = useNavigate();
+
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -42,6 +45,12 @@ const Bookings: React.FC = () => {
     const [packageTypeFilter, setPackageTypeFilter] = useState('All');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    
+    useEffect(() => {
+        if (location.state?.newBookingForPackageId) {
+            handleOpenAddModal();
+        }
+    }, [location.state?.newBookingForPackageId]);
 
     const filteredBookings = useMemo(() => {
         return bookings.filter(b => {
@@ -102,6 +111,9 @@ const Bookings: React.FC = () => {
             message: t('bookingSavedSuccess'),
             type: 'success',
         });
+        if (location.state?.newBookingForPackageId) {
+            navigate(location.pathname, { replace: true, state: {} });
+        }
     };
     
     const handleOpenEditModal = (booking: Booking) => {
@@ -117,6 +129,13 @@ const Bookings: React.FC = () => {
     const handleCloseModal = () => {
         setIsFormModalOpen(false);
         setEditingBooking(null);
+    };
+
+    const handleCloseModalWithStateClear = () => {
+        handleCloseModal();
+        if (location.state?.newBookingForPackageId) {
+            navigate(location.pathname, { replace: true, state: {} });
+        }
     };
     
     const handleOpenDetailsModal = (booking: Booking) => {
@@ -306,9 +325,12 @@ const Bookings: React.FC = () => {
 
         try {
             const doc = new jsPDF();
+            
             await generateEnglishInvoice(doc, invoiceBooking, customer, pkg);
 
-            doc.output('dataurlnewwindow');
+            const safeCustomerName = customer.name.replace(/\s+/g, '_');
+            doc.save(`Invoice-${safeCustomerName}-${invoiceBooking.id}.pdf`);
+            addToast({ title: t('success'), message: t('invoiceGeneratedSuccess'), type: 'success' });
 
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -319,153 +341,11 @@ const Bookings: React.FC = () => {
         }
     };
 
-    const handleExportExcel = () => {
-        if (filteredBookings.length === 0) {
-            addToast({ title: t('error'), message: t('noDataToExport'), type: 'error' });
-            return;
-        }
-
-        const dataToExport = filteredBookings.map(booking => {
-            const customer = customers.find(c => c.id === booking.customerId);
-            const pkg = packages.find(p => p.id === booking.packageId);
-            const totalPaidForBooking = payments
-                .filter(p => p.bookingId === booking.id)
-                .reduce((sum, p) => sum + p.amount, 0);
-            
-            const commonData = {
-                [t('bookingId')]: booking.id,
-                [t('customerName')]: customer?.name || 'N/A',
-                [t('passportNumber')]: customer?.passportNumber || 'N/A',
-                [t('bookingDate')]: new Date(booking.bookingDate).toLocaleDateString(),
-                [t('status')]: t(booking.status.replace(' ', '') as any),
-                [t('airline')]: booking.flightDetails?.airline || 'N/A',
-                [t('flightNumber')]: booking.flightDetails?.flightNumber || 'N/A',
-                [t('departureDate')]: booking.flightDetails ? new Date(booking.flightDetails.departureDate).toLocaleDateString() : 'N/A',
-                [t('returnDate')]: booking.flightDetails ? new Date(booking.flightDetails.returnDate).toLocaleDateString() : 'N/A',
-            };
-
-            if (booking.isTicketOnly) {
-                return {
-                    ...commonData,
-                    [t('packageName')]: t('ticketOnlySale'),
-                    [t('packageCode')]: 'N/A',
-                    [t('roomType')]: 'N/A',
-                    [t('meals')]: 'N/A',
-                    [t('price')]: booking.ticketCostPrice,
-                    [t('totalPaid')]: booking.ticketTotalPaid,
-                    [t('remainingBalance')]: (booking.ticketTotalPaid || 0) - (booking.ticketCostPrice || 0), // Profit
-                }
-            }
-
-            return {
-                ...commonData,
-                [t('packageName')]: pkg?.name || 'N/A',
-                [t('packageCode')]: pkg?.packageCode || 'N/A',
-                [t('roomType')]: booking.withoutBed ? t('withoutBedShort') : (booking.roomType || 'N/A'),
-                [t('meals')]: booking.withoutBed ? 'N/A' : (booking.meals ? t(booking.meals.replace(' ', '') as any) : 'N/A'),
-                [t('price')]: pkg?.price || 0,
-                [t('totalPaid')]: totalPaidForBooking,
-                [t('remainingBalance')]: (pkg?.price || 0) - totalPaidForBooking,
-            };
-        });
-
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const cols = Object.keys(dataToExport[0] || {}).map(key => ({ wch: Math.max(20, key.length + 2) }));
-        worksheet['!cols'] = cols;
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Bookings');
-        XLSX.writeFile(workbook, 'Bookings_Export.xlsx');
-    };
-
-    const handleExportPdf = () => {
-        if (filteredBookings.length === 0) {
-            addToast({ title: t('error'), message: t('noDataToExport'), type: 'error' });
-            return;
-        }
-    
-        const doc = new jsPDF({ orientation: "landscape" });
-    
-        const head = [[
-            t('bookingId'),
-            t('customerName'),
-            t('package'),
-            t('status'),
-            t('price'),
-            t('paid'),
-            t('remainingBalance')
-        ]];
-    
-        const body = filteredBookings.map(booking => {
-            const customer = customers.find(c => c.id === booking.customerId);
-            const pkg = packages.find(p => p.id === booking.packageId);
-            const totalPaidForBooking = payments
-                .filter(p => p.bookingId === booking.id)
-                .reduce((sum, p) => sum + p.amount, 0);
-            
-            let price = 0;
-            let paid = 0;
-            let remaining = 0;
-            let packageName = 'N/A';
-    
-            if (booking.isTicketOnly) {
-                price = booking.ticketTotalPaid || 0;
-                paid = booking.ticketTotalPaid || 0; // For ticket only, paid is the sale price
-                remaining = 0;
-                packageName = t('ticketOnlySale');
-            } else if (pkg) {
-                price = pkg.price;
-                paid = totalPaidForBooking;
-                remaining = price - paid;
-                packageName = pkg.name;
-            }
-    
-            return [
-                booking.id,
-                customer?.name || 'N/A',
-                packageName,
-                t(booking.status.replace(' ', '') as any),
-                `EGP ${price.toLocaleString()}`,
-                `EGP ${paid.toLocaleString()}`,
-                `EGP ${remaining.toLocaleString()}`
-            ];
-        });
-    
-        doc.text(`${t('companyName')} - ${t('bookingList')}`, 14, 15);
-        doc.setFontSize(10);
-        doc.text(`${t('reportDate')}: ${new Date().toLocaleDateString()}`, 14, 22);
-    
-        autoTable(doc, {
-            head: head,
-            body: body,
-            startY: 28,
-            headStyles: { fillColor: [22, 101, 52] }, // Primary color
-            styles: { font: 'Helvetica' },
-        });
-    
-        doc.save('Bookings_Export.pdf');
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <h1 className="text-3xl font-bold text-gray-800">{t('bookings')}</h1>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleExportExcel}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={filteredBookings.length === 0}
-                    >
-                        <FileSpreadsheet className="w-5 h-5" />
-                        <span>{t('exportExcel')}</span>
-                    </button>
-                    <button
-                        onClick={handleExportPdf}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={filteredBookings.length === 0}
-                    >
-                        <FileDown className="w-5 h-5" />
-                        <span>{t('exportPDF')}</span>
-                    </button>
                     <button 
                         onClick={handleOpenAddModal}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
@@ -582,7 +462,7 @@ const Bookings: React.FC = () => {
                                                 <button onClick={() => handleOpenInvoiceModal(booking)} className="text-gray-500 hover:text-gray-800" title={t('invoice')}>
                                                     <Printer className="w-5 h-5" />
                                                 </button>
-                                                {currentUser?.role === 'Admin' && (
+                                                {['Admin', 'Manager'].includes(currentUser?.role || '') && (
                                                     <button onClick={() => handleDeleteBooking(booking.id)} className="text-accent hover:text-red-800" title={t('delete')}><Trash2 className="w-5 h-5" /></button>
                                                 )}
                                             </div>
@@ -605,13 +485,14 @@ const Bookings: React.FC = () => {
 
             <Modal
                 isOpen={isFormModalOpen}
-                onClose={handleCloseModal}
+                onClose={handleCloseModalWithStateClear}
                 title={editingBooking ? t('editBooking') : t('addBooking')}
             >
                 <BookingForm 
                     onSave={handleSaveBooking}
-                    onCancel={handleCloseModal}
+                    onCancel={handleCloseModalWithStateClear}
                     booking={editingBooking}
+                    initialPackageId={location.state?.newBookingForPackageId}
                 />
             </Modal>
 

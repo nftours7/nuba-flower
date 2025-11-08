@@ -1,7 +1,11 @@
 
+
+
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../hooks/useApp';
-import { PlusCircle, Edit, Trash2, Search, X, Star, Package as PackageIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, X, Star, Package as PackageIcon, Book } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import PackageForm from '../components/PackageForm';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -10,6 +14,7 @@ import type { Package } from '../types';
 
 const Packages: React.FC = () => {
     const { t, packages, setPackages, addToast, currentUser, logActivity } = useApp();
+    const navigate = useNavigate();
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingPackage, setEditingPackage] = useState<Package | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -100,30 +105,36 @@ const Packages: React.FC = () => {
         setEditingPackage(null);
     };
 
+    const handleBookNow = (packageId: string) => {
+        navigate('/bookings', { state: { newBookingForPackageId: packageId } });
+    };
+
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-gray-800">{t('packages')}</h1>
-                <button 
-                    onClick={handleOpenAddModal}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-                >
-                    <PlusCircle className="w-5 h-5" />
-                    <span>{t('addPackage')}</span>
-                </button>
+                {['Admin', 'Manager'].includes(currentUser?.role || '') && (
+                    <button 
+                        onClick={handleOpenAddModal}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    >
+                        <PlusCircle className="w-5 h-5" />
+                        <span>{t('addPackage')}</span>
+                    </button>
+                )}
             </div>
             
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row flex-wrap items-center gap-4">
                 <div className="relative flex-grow w-full sm:w-auto">
-                    <Search className="absolute left-3 rtl:right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder={t('searchPackages')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 rtl:pr-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="w-full ps-10 pe-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
                     />
                 </div>
                 <div className="w-full sm:w-48">
@@ -145,20 +156,18 @@ const Packages: React.FC = () => {
                     {filteredPackages.map(pkg => (
                         <div key={pkg.id} className={`bg-white rounded-xl shadow-md p-6 flex flex-col justify-between relative overflow-hidden transition-all ${pkg.isFeatured ? 'border-2 border-secondary' : 'border border-transparent'}`}>
                             {pkg.isFeatured && (
-                                <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto p-2 bg-secondary rounded-bl-xl rtl:rounded-br-xl rtl:rounded-bl-none">
+                                <div className="absolute top-0 end-0 p-2 bg-secondary rounded-es-xl">
                                     <Star className="w-5 h-5 text-white fill-current" />
                                 </div>
                             )}
                             <div>
                                 <div className="flex justify-between items-start">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-gray-800 pr-8 rtl:pl-8">{pkg.name}</h2>
-                                        <p className="text-xs font-mono text-gray-400 mt-1">{pkg.packageCode}</p>
-                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-800 pe-8">{pkg.name}</h2>
                                     <span className={`px-3 py-1 text-sm font-semibold rounded-full ${pkg.type === 'Hajj' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                                         {pkg.type}
                                     </span>
                                 </div>
+                                <p className="text-xs font-mono text-gray-400 mt-1">{pkg.packageCode}</p>
                                 <p className="text-2xl font-bold text-primary my-3">EGP {pkg.price.toLocaleString()}</p>
                                 <p className="text-sm text-gray-500 mb-4">{pkg.description}</p>
                                 <div className="text-sm space-y-2">
@@ -168,15 +177,26 @@ const Packages: React.FC = () => {
                                     <p><span className="font-semibold">{t('includes')}:</span> {pkg.includes.join(', ')}</p>
                                 </div>
                             </div>
-                            <div className="flex justify-end items-center gap-4 mt-6">
-                                <button onClick={() => handleOpenEditModal(pkg)} className="text-blue-600 hover:text-blue-800" title={t('edit')}>
-                                    <Edit className="w-5 h-5" />
+                            <div className="flex justify-between items-center gap-4 mt-6 border-t pt-4">
+                                <div className="flex items-center gap-4">
+                                    {['Admin', 'Manager'].includes(currentUser?.role || '') && (
+                                        <>
+                                            <button onClick={() => handleOpenEditModal(pkg)} className="text-blue-600 hover:text-blue-800" title={t('edit')}>
+                                                <Edit className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={() => handleDeletePackage(pkg.id)} className="text-accent hover:text-red-800" title={t('delete')}>
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => handleBookNow(pkg.id)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors"
+                                >
+                                    <Book className="w-4 h-4" />
+                                    <span>{t('bookNow')}</span>
                                 </button>
-                                {currentUser?.role === 'Admin' && (
-                                    <button onClick={() => handleDeletePackage(pkg.id)} className="text-accent hover:text-red-800" title={t('delete')}>
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                )}
                             </div>
                         </div>
                     ))}

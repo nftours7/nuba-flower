@@ -15,7 +15,7 @@ interface BookingDetailsModalProps {
 
 const DetailRow: React.FC<{ label: string, value?: string | number | null, icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
     <div className="flex items-start text-sm">
-        {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 mr-3 flex-shrink-0" />}
+        {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 me-3 flex-shrink-0" />}
         <span className="font-semibold text-gray-600 w-32">{label}:</span>
         <span className="text-gray-800 break-words">{value || 'N/A'}</span>
     </div>
@@ -43,7 +43,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen, onClo
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`${t('bookingDetails')} - ${booking.id}`}>
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pe-4">
                 {/* Customer Information */}
                 {customer && (
                     <Section title={t('customerInformation')} icon={User}>
@@ -57,16 +57,16 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen, onClo
                 {/* Package/Ticket Information */}
                 {booking.isTicketOnly ? (
                     <Section title={t('ticketInformation')} icon={Ticket}>
-                         <DetailRow label={t('ticketCostPrice')} value={`EGP ${booking.ticketCostPrice?.toLocaleString()}`} />
-                         <DetailRow label={t('ticketTotalPaid')} value={`EGP ${booking.ticketTotalPaid?.toLocaleString()}`} />
-                         <DetailRow label={t('profit')} value={`EGP ${ticketProfit.toLocaleString()}`} />
+                         <DetailRow label={t('ticketCostPrice')} value={`${t('price_unit', { price: (booking.ticketCostPrice || 0).toLocaleString()})}`} />
+                         <DetailRow label={t('ticketTotalPaid')} value={`${t('price_unit', { price: (booking.ticketTotalPaid || 0).toLocaleString()})}`} />
+                         <DetailRow label={t('profit')} value={`${t('price_unit', { price: ticketProfit.toLocaleString()})}`} />
                     </Section>
                 ) : pkg && (
                      <Section title={t('packageInformation')} icon={PackageIcon}>
                         <DetailRow label={t('packageName')} value={pkg.name} />
                         <DetailRow label={t('packageCode')} value={pkg.packageCode} />
-                        <DetailRow label={t('price')} value={`EGP ${pkg.price.toLocaleString()}`} />
-                        <DetailRow label={t('duration')} value={`${pkg.duration} days`} />
+                        <DetailRow label={t('price')} value={`${t('price_unit', { price: pkg.price.toLocaleString()})}`} />
+                        <DetailRow label={t('duration')} value={`${pkg.duration} ${t('days_unit')}`} />
                         <DetailRow label={t('hotelMakkah')} value={pkg.hotelMakkah} />
                         <DetailRow label={t('hotelMadinah')} value={pkg.hotelMadinah} />
                      </Section>
@@ -97,9 +97,9 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen, onClo
                 
                 {/* Financial Summary */}
                 <Section title={t('financialSummary')} icon={BadgePercent}>
-                    <DetailRow label={t('totalPackagePrice')} value={`EGP ${totalPrice.toLocaleString()}`} />
-                    <DetailRow label={t('amountPaid')} value={`EGP ${totalPaid.toLocaleString()}`} />
-                    <DetailRow label={t('remainingBalance')} value={`EGP ${remainingBalance.toLocaleString()}`} />
+                    <DetailRow label={t('totalPackagePrice')} value={`${t('price_unit', { price: totalPrice.toLocaleString()})}`} />
+                    <DetailRow label={t('amountPaid')} value={`${t('price_unit', { price: totalPaid.toLocaleString()})}`} />
+                    <DetailRow label={t('remainingBalance')} value={`${t('price_unit', { price: remainingBalance.toLocaleString()})}`} />
                 </Section>
                 
                 {/* Payment History */}
@@ -109,16 +109,16 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen, onClo
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2 text-left font-semibold text-gray-600">{t('paymentDate')}</th>
-                                        <th className="px-4 py-2 text-left font-semibold text-gray-600">{t('amount')}</th>
-                                        <th className="px-4 py-2 text-left font-semibold text-gray-600">{t('paymentMethod')}</th>
+                                        <th className="px-4 py-2 text-start font-semibold text-gray-600">{t('paymentDate')}</th>
+                                        <th className="px-4 py-2 text-start font-semibold text-gray-600">{t('amount')}</th>
+                                        <th className="px-4 py-2 text-start font-semibold text-gray-600">{t('paymentMethod')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {bookingPayments.map(p => (
                                         <tr key={p.id}>
                                             <td className="px-4 py-2">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2">EGP {p.amount.toLocaleString()}</td>
+                                            <td className="px-4 py-2">{t('price_unit', { price: p.amount.toLocaleString()})}</td>
                                             <td className="px-4 py-2">{t(p.method.replace(' ', '') as any)}</td>
                                         </tr>
                                     ))}

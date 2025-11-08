@@ -43,7 +43,7 @@ const Finance: React.FC = () => {
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
 
-    if (currentUser?.role !== 'Admin') {
+    if (!['Admin', 'Manager'].includes(currentUser?.role || '')) {
         return <Navigate to="/dashboard" replace />;
     }
 
@@ -194,9 +194,11 @@ const Finance: React.FC = () => {
 
         try {
             const doc = new jsPDF();
+            
             await generateEnglishReceipt(doc, receiptPayment, booking, customer, pkg);
             
-            doc.save(`Receipt-${receiptPayment.id}.pdf`);
+            const safeCustomerName = customer.name.replace(/\s+/g, '_');
+            doc.save(`Receipt-${safeCustomerName}-${receiptPayment.id}.pdf`);
             addToast({ title: t('success'), message: t('receiptGeneratedSuccess'), type: 'success' });
         } catch (error) {
             console.error('Error generating receipt PDF:', error);

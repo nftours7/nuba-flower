@@ -12,7 +12,7 @@ const Reports: React.FC = () => {
     const [layoutType, setLayoutType] = useState('standardList');
     const [loading, setLoading] = useState(false);
 
-    if (currentUser?.role !== 'Admin') {
+    if (!['Admin', 'Manager'].includes(currentUser?.role || '')) {
         return <Navigate to="/dashboard" replace />;
     }
 

@@ -20,7 +20,7 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
       {/* Y-Axis and Chart Area */}
       <div className="flex-grow flex">
         {/* Y-Axis Labels */}
-        <div className="flex flex-col justify-between text-xs text-gray-400 pr-4 rtl:pr-0 rtl:pl-4">
+        <div className="flex flex-col justify-between text-xs text-gray-400 ps-4">
           {yAxisLabels.reverse().map((label, index) => (
             <span key={index}>{label.toLocaleString()}</span>
           ))}
@@ -55,7 +55,7 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
       </div>
       
       {/* X-Axis Labels */}
-      <div className="flex justify-around items-center pt-2 text-xs text-gray-500 ml-[5%] rtl:ml-0 rtl:mr-[5%]">
+      <div className="flex justify-around items-center pt-2 text-xs text-gray-500 ms-[5%]">
         {data.labels.map(label => (
           <span key={label} className="w-1/6 text-center">{label}</span>
         ))}

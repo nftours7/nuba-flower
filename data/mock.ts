@@ -8,8 +8,13 @@ export const mockUsers: User[] = [
 ];
 
 export const mockCustomers: Customer[] = [
-  { id: 'C001', name: 'Ahmed Mohamed', phone: '+201012345678', email: 'ahmed@email.com', passportNumber: 'A12345678', passportExpiry: '2028-05-10', documents: [], dateAdded: '2023-10-15', age: 35, gender: 'Male' },
-  { id: 'C002', name: 'Fatima Ali', phone: '+201187654321', email: 'fatima@email.com', passportNumber: 'B87654321', passportExpiry: '2029-11-20', documents: [], dateAdded: '2023-10-18', age: 28, gender: 'Female' },
+  { id: 'C001', name: 'Ahmed Mohamed', phone: '+201012345678', email: 'ahmed@email.com', passportNumber: 'A12345678', passportExpiry: '2028-05-10', documents: [
+    { id: 'DOC001', name: 'Passport Scan', url: 'https://i.ibb.co/6r3fbr5/sample-passport.png', type: 'passport' },
+    { id: 'DOC002', name: 'Personal Photo', url: 'https://i.ibb.co/P9L5d1p/sample-photo.jpg', type: 'photo' }
+  ], dateAdded: '2023-10-15', age: 35, gender: 'Male' },
+  { id: 'C002', name: 'Fatima Ali', phone: '+201187654321', email: 'fatima@email.com', passportNumber: 'B87654321', passportExpiry: '2029-11-20', documents: [
+    { id: 'DOC003', name: 'Visa Document', url: 'https://i.ibb.co/6r3fbr5/sample-passport.png', type: 'other' }
+  ], dateAdded: '2023-10-18', age: 28, gender: 'Female' },
   { id: 'C003', name: 'Youssef Ibrahim', phone: '+201298765432', email: 'youssef@email.com', passportNumber: 'C54321678', passportExpiry: '2027-01-30', documents: [], dateAdded: '2023-11-01', age: 42, gender: 'Male' },
   { id: 'C004', name: 'Omar Ahmed', phone: '+201012345678', email: 'ahmed@email.com', passportNumber: 'D11122233', passportExpiry: '2030-01-01', documents: [], dateAdded: '2024-03-01', age: 5, gender: 'Male' },
   { id: 'C005', name: 'Sara Ali (Infant)', phone: '+201187654321', email: 'fatima@email.com', passportNumber: 'E44455566', passportExpiry: '2031-01-01', documents: [], dateAdded: '2024-03-01', age: 1, gender: 'Female' },

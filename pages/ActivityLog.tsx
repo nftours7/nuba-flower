@@ -51,13 +51,13 @@ const ActivityLog: React.FC = () => {
 
              <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row flex-wrap items-center gap-4">
                 <div className="relative flex-grow w-full md:w-auto">
-                    <Search className="absolute left-3 rtl:right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder={t('searchActivity')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 rtl:pr-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="w-full ps-10 pe-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all duration-200"
                     />
                 </div>
                 <div className="w-full md:w-auto md:flex-shrink-0 md:w-48">
@@ -91,7 +91,7 @@ const ActivityLog: React.FC = () => {
 
             {filteredLog.length > 0 ? (
                 <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+                    <table className="w-full text-sm text-start text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">{t('timestamp')}</th>
